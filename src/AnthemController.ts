@@ -27,6 +27,7 @@ export enum AnthemReceiverModel {
   MRX540 = 'MRX 540',
   MRX740 = 'MRX 740',
   MRX1140 = 'MRX 1140',
+  MRXSLM = 'MRX SLM',
   AVM60 = 'AVM 60',
   AVM70 = 'AVM 70',
   AVM90 = 'AVM 90'
@@ -61,6 +62,7 @@ const AllAnthemReceiverModel = [
   AnthemReceiverModel.MRX540,
   AnthemReceiverModel.MRX740,
   AnthemReceiverModel.MRX1140,
+  AnthemReceiverModel.MRXSLM,
   AnthemReceiverModel.AVM60,
   AnthemReceiverModel.AVM70,
   AnthemReceiverModel.AVM90,
@@ -79,6 +81,7 @@ const ProtocolV01Model = [
 const ProtocolV02Model = [
   AnthemReceiverModel.MRX540,
   AnthemReceiverModel.MRX740,
+  AnthemReceiverModel.MRXSLM,
   AnthemReceiverModel.MRX1140,
   AnthemReceiverModel.AVM70,
   AnthemReceiverModel.AVM90,
@@ -141,7 +144,7 @@ export enum AnthemKeyCode {
   }
 
 export class AnthemZone{
-  ZoneNumber = 0;
+  ZoneNumber = 1;
   private IsMainZone = false;
   private IsMuted = false;
   private ARCConfigured = true;
@@ -475,12 +478,28 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
       }
 
       if(this.IsProtocolV02()){
-        this.QueueCommand('GCFPB?');
+        if(this.ReceiverModel == AnthemReceiverModel.MRXSLM){ // MRX SLM only has an LED
+          this.QueueCommand('GCLEDB?');
+        }else{
+          this.QueueCommand('GCFPB?');
+        }
       }
     }
 
     SetPanelBrightness(Brightness:number){
-      this.QueueCommand('GCFPB' + Brightness);
+      if(this.ReceiverModel == AnthemReceiverModel.MRXSLM){ // MRX SLM only has an LED with four options.
+        Brightness = Math.round(Brightness / 33);
+        this.emit('ShowDebugInfo', 'Brightness rounded: '+Brightness); 
+        Brightness = 
+          Brightness < 1 ? 0 :
+          Brightness < 2 ? 40 :
+          Brightness < 3 ? 80 : 100 ;
+        this.QueueCommand('GCLEDB' + Brightness);
+        this.QueueCommand('GCLEDB?');
+      }else{
+        this.QueueCommand('GCFPB' + Brightness);
+        this.QueueCommand('GCFPB?');
+      }
       this.SendCommand();
     }
 
@@ -880,7 +899,8 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     //
     // Availability: All model
     ToggleConfigMenu(){
-      this.QueueCommand('Z1SMDt');
+      if(this.ReceiverModel == AnthemReceiverModel.MRXSLM) return; // MRX SLM Does not support on-screen config menu.
+      this.QueueCommand('Z1SMD');
       this.SendCommand();
     }
 
@@ -890,6 +910,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     //
     // Availability: All model
     GetConfigMenuState(){
+      if(this.ReceiverModel == AnthemReceiverModel.MRXSLM) return; // MRX SLM Does not support on-screen config menu.
       this.QueueCommand('Z1SMD?');
     }
 
@@ -1045,7 +1066,17 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
           // Get Panel Brightness
           if(Response.substring(0, 5) === 'GCFPB' ){
             this.PanelBrightness = Number(Response.substring(5, Response.length));
-
+            if(this.CurrentState === ControllerState.Operation){
+              this.emit('PanelBrightnessChange', this.PanelBrightness);
+            }
+          }
+          // Get LED Brightness for MRX SLM
+          if(Response.substring(0, 6) === 'GCLEDB' ){
+            this.PanelBrightness = Number(Response.substring(6, Response.length));
+            this.PanelBrightness = 
+              this.PanelBrightness == 0 ? 0 :
+              this.PanelBrightness == 40 ? 33 :
+              this.PanelBrightness == 80 ? 66 : 100; // Map request and response to four brightness values.
             if(this.CurrentState === ControllerState.Operation){
               this.emit('PanelBrightnessChange', this.PanelBrightness);
             }

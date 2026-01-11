@@ -70,9 +70,10 @@ export class HKPowerInputAccessory {
 
     for (let i = 0; i < InputArray.length ; i++){
       const hdmiInputService = this.ReceiverAccessory.addService(this.platform.Service.InputSource, 'hdmi'+(i+1), 'HDMI '+ (i+1));
+      let ConfiguredName = this.Controller.ReceiverModel == 'MRX SLM'? Buffer.from(InputArray[i], 'hex').toString() : InputArray[i];
       hdmiInputService
         .setCharacteristic(this.platform.Characteristic.Identifier, (i+1))
-        .setCharacteristic(this.platform.Characteristic.ConfiguredName, InputArray[i])
+        .setCharacteristic(this.platform.Characteristic.ConfiguredName, ConfiguredName)
         .setCharacteristic(this.platform.Characteristic.IsConfigured, this.platform.Characteristic.IsConfigured.CONFIGURED)
         .setCharacteristic(this.platform.Characteristic.InputSourceType, this.platform.Characteristic.InputSourceType.HDMI);
       this.TVService.addLinkedService(hdmiInputService);
