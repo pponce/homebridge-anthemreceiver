@@ -38,7 +38,7 @@ export class HKBrightnessAccessory extends HKAccessory {
 
     this.Controller.on('ZonePowerChange', ( ) => {
       // Power off panel accessory if all zone are off
-      if(!this.Controller.GetZonePower(1) && !this.Controller.GetZonePower(2)){
+      if(this.AllZonesOff()){
         this.PanelBrightnessOn = false;
         this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(false);
         this.service.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(false);
@@ -48,8 +48,8 @@ export class HKBrightnessAccessory extends HKAccessory {
 
   SetPanelBrightness(value){
 
-    // If Zone1 and Zone2 are powered off, cannot change brightness level
-    if(!this.Controller.GetZonePower(1) && !this.Controller.GetZonePower(2)){
+    // If configured zones are powered off, cannot change brightness level
+    if(this.AllZonesOff()){
       this.platform.log.error('Brightness Accessory' +': Cannot change brightness level, zone are not powered on');
       setTimeout(() => {
         this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(false);
@@ -61,12 +61,17 @@ export class HKBrightnessAccessory extends HKAccessory {
     this.Controller.SetPanelBrightness(value);
   }
 
+  AllZonesOff(){
+    this.platform.log.info('zones length: ', this.Controller.GetConfiguredZoneNumber());
+    return this.Controller.GetConfiguredZoneNumber() > 1 ? !this.Controller.GetZonePower(1) && !this.Controller.GetZonePower(2) : !this.Controller.GetZonePower(1);
+  }
+
   SetPanelOn(value){
 
     this.PanelBrightnessOn = value;
 
-    // If Zone1 and Zone2 are powered off, cannot change accessory stage
-    if(!this.Controller.GetZonePower(1) && !this.Controller.GetZonePower(2)){
+    // If configured zones are powered off, cannot change accessory stage
+    if(this.AllZonesOff()){
       this.platform.log.error('Brightness Accessory' +': Cannot change status, zone are not powered on');
       setTimeout(() => {
         this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(false);
