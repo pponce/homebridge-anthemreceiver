@@ -56,7 +56,7 @@ export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
 
     this.api.on('didFinishLaunching', () => {
       log.debug('Finished initializing platform');
-      let isSLM = this.Controller.ReceiverModel == 'MRX SLM';
+
       // Do not start plugin if errors has been found in config file
       if(this.CheckConfigFile()){
 
@@ -64,7 +64,7 @@ export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
           this.log.error('Error adding zone 1 to controller');
         }
         
-        if (!isSLM){ // SLM only has one zone
+        if (this.Controller.GetConfiguredZoneNumber() > 1){ // SLM only has one zone
           if(!this.Controller.AddControllingZone(2, this.Zone2Name, false)){
             this.log.error('Error adding zone 2 to controller');
           }
