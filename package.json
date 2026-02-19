@@ -13,7 +13,7 @@
   },
   "engines": {
     "node": ">=20.0.0",
-    "homebridge": ">=1.8.0 || ^2.0.0"
+    "homebridge": "^1.8.0 || ^2.0.0"
   },
   "main": "dist/index.js",
   "scripts": {
@@ -30,7 +30,7 @@
     "tiny-typed-emitter": "^2.1.0"
   },
   "peerDependencies": {
-    "homebridge": ">=1.8.0 || ^2.0.0"
+    "homebridge": "^1.8.0 || ^2.0.0"
   },
   "devDependencies": {
     "@types/node": "^14.18.3",
