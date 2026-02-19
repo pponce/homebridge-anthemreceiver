@@ -37,7 +37,7 @@ export class HKBrightnessAccessory extends HKAccessory {
     });
 
     this.Controller.on('ZonePowerChange', ( ) => {
-      // Power off panel accessory if all zone are off
+      // Power off panel accessory if all zones are off
       if(this.AllZonesOff()){
         this.PanelBrightnessOn = false;
         this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(false);
@@ -50,7 +50,7 @@ export class HKBrightnessAccessory extends HKAccessory {
 
     // If configured zones are powered off, cannot change brightness level
     if(this.AllZonesOff()){
-      this.platform.log.error('Brightness Accessory' +': Cannot change brightness level, zone are not powered on');
+      this.platform.log.error('Brightness Accessory' +': Cannot change brightness level, zones are not powered on');
       setTimeout(() => {
         this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(false);
         this.service.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(0);
@@ -72,7 +72,7 @@ export class HKBrightnessAccessory extends HKAccessory {
 
     // If configured zones are powered off, cannot change accessory stage
     if(this.AllZonesOff()){
-      this.platform.log.error('Brightness Accessory' +': Cannot change status, zone are not powered on');
+      this.platform.log.error('Brightness Accessory' +': Cannot change status, zones are not powered on');
       setTimeout(() => {
         this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(false);
         this.service.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(0);

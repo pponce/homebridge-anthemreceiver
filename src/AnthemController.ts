@@ -562,7 +562,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
 
     //
     // Function  GetNumberOfInputFromReceiver()
-    // Get nimber of input from receiver
+    // Get number of inputs from receiver
     //
     // Availability: All models supported by controller
     private GetNumberOfInputFromReceiver(){
@@ -573,7 +573,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     // Function GetInputsNameFromReceiver()
     // Get input name from receiver
     //
-    // Availability: All model
+    // Availability: All models
     //
     private GetInputsNameFromReceiver(){
 
@@ -600,7 +600,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     // Function GetZoneActiveInputFromReceiver()
     // Get zone active input
     //
-    // Availability: All model
+    // Availability: All models
     private GetZoneActiveInputFromReceiver(ZoneNumber:number){
       this.QueueCommand('Z' + ZoneNumber + 'INP?');
     }
@@ -609,7 +609,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     // Function SetZoneInput()
     // Set Zone active input
     //
-    // Availability: All model
+    // Availability: All models
     SetZoneInput(ZoneNumber: number, InputNumber: number){
       this.QueueCommand('Z' + ZoneNumber + 'INP' + InputNumber);
       this.SendCommand();
@@ -634,7 +634,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     //
     // Function GetZoneARCEnabled()
     //
-    // Availability: All model
+    // Availability: All models
     GetZoneARCEnabled(ZoneNumber:number){
 
       if(!this.Zones[ZoneNumber].GetIsMainZone()){
@@ -657,7 +657,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     //
     // Function SetZoneARCEnabled()
     //
-    // Availability: All model
+    // Availability: All models
     SetZoneARCEnabled(ZoneNumber:number, ARCEnabled:boolean){
 
       if(!this.Zones[ZoneNumber].GetIsMainZone()){
@@ -713,7 +713,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     //
     // Function SetAudioListeningMode()
     //
-    // Availability: All model
+    // Availability: All models
     SetAudioListeningMode(ZoneNumber:number, AudioMode: number){
       if(!this.Zones[ZoneNumber].GetIsMainZone()){
         this.emit('ControllerError', AnthemControllerError.COMMAND_ONLY_AVAILABLE_ON_MAIN_ZONE, '');
@@ -732,7 +732,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     // Function ToggleAudioListeningMode()
     // Iterate throught inputs
     //
-    // Availability: All model
+    // Availability: All models
     ToggleAudioListeningMode(ZoneNumber:number, UP: boolean){
       if(!this.Zones[ZoneNumber].GetIsMainZone()){
         this.emit('ControllerError', AnthemControllerError.COMMAND_ONLY_AVAILABLE_ON_MAIN_ZONE, '');
@@ -761,7 +761,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     // Function GetAudioListeningMode()
     // Iterate throught inputs
     //
-    // Availability: All model
+    // Availability: All models
     GetAudioListeningMode(ZoneNumber:number){
       if(!this.Zones[ZoneNumber].GetIsMainZone()){
         this.emit('ControllerError', AnthemControllerError.COMMAND_ONLY_AVAILABLE_ON_MAIN_ZONE, '');
@@ -832,7 +832,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     //
     // Function ToggleMute()
     //
-    // Availability: All model
+    // Availability: All models
     ToggleMute(ZoneNumber: number){
       this.QueueCommand('Z' + ZoneNumber + 'MUTt');
       this.SendCommand();
@@ -841,7 +841,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     //
     // Function SetMute()
     //
-    // Availability: All model
+    // Availability: All models
     SetMute(ZoneNumber: number, Mute: boolean){
 
       let m = '0';
@@ -855,7 +855,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     //
     // Function GetMute()
     //
-    // Availability: All model
+    // Availability: All models
     GetMute(ZoneNumber: number):boolean{
       return this.Zones[ZoneNumber].GetIsMuted();
     }
@@ -863,7 +863,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     //
     // Function VolumeUp()
     //
-    // Availability: All model
+    // Availability: All models
     VolumeUp(ZoneNumber: number){
 
       if(this.IsProtocolV02()){
@@ -882,7 +882,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     //
     // Function Volume Down()
     //
-    // Availability: All model
+    // Availability: All models
     VolumeDown(ZoneNumber: number){
 
       if(this.IsProtocolV02()){
@@ -897,7 +897,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     // Function ToggleConfigMenu()
     // Show on screen configuration menu
     //
-    // Availability: All model
+    // Availability: All models
     ToggleConfigMenu(){
       if(this.ReceiverModel === AnthemReceiverModel.MRXSLM) {
         return;
@@ -910,7 +910,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     // Function ToggleConfigMenu()
     // Show on screen configuration menu
     //
-    // Availability: All model
+    // Availability: All models
     GetConfigMenuState(){
       if(this.ReceiverModel === AnthemReceiverModel.MRXSLM) {
         return;
@@ -921,7 +921,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     //
     // Function SendKey()
     //
-    // Availability: All model
+    // Availability: All models
     SendKey(ZoneNumber: number, Code: AnthemKeyCode){
       this.QueueCommand('Z'+ ZoneNumber + 'SIM'+ Code);
       this.SendCommand();
@@ -1175,7 +1175,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
           // Get Input Name
           if(Response.substring(0, 2) === 'IS'){
             const TempString = Response.substring(2, Response.length);
-            // Find position of firs 'IN' in string
+            // Find position of first 'IN' in string
             for(let i = 0 ; i < Response.length-2; i++){
               if(TempString.substring(i, i+2) === 'IN'){
                 const InputNumber = Number(TempString.substring(0, i));
@@ -1194,7 +1194,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
             }
           }
 
-          // Get Input Name from older dervice function
+          // Get input name from older device function
           if(Response.substring(0, 3) === 'ISN'){
             const InputNumber = Number(Response.substring(3, 5));
             const Name = Response.substring(5, Response.length);
