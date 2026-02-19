@@ -478,7 +478,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
       }
 
       if(this.IsProtocolV02()){
-        if(this.ReceiverModel == AnthemReceiverModel.MRXSLM){ // MRX SLM only has an LED
+        if(this.ReceiverModel === AnthemReceiverModel.MRXSLM){ // MRX SLM only has an LED
           this.QueueCommand('GCLEDB?');
         }else{
           this.QueueCommand('GCFPB?');
@@ -487,13 +487,13 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     }
 
     SetPanelBrightness(Brightness:number){
-      if(this.ReceiverModel == AnthemReceiverModel.MRXSLM){ // MRX SLM only has an LED with four options.
+      if(this.ReceiverModel === AnthemReceiverModel.MRXSLM){ // MRX SLM only has an LED with four options.
         Brightness = Math.round(Brightness / 33);
-        this.emit('ShowDebugInfo', 'Brightness rounded: '+Brightness); 
-        Brightness = 
+        this.emit('ShowDebugInfo', 'Brightness rounded: '+Brightness);
+        Brightness =
           Brightness < 1 ? 0 :
-          Brightness < 2 ? 40 :
-          Brightness < 3 ? 80 : 100 ;
+            Brightness < 2 ? 40 :
+              Brightness < 3 ? 80 : 100 ;
         this.QueueCommand('GCLEDB' + Brightness);
         this.QueueCommand('GCLEDB?');
       }else{
@@ -899,7 +899,9 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     //
     // Availability: All model
     ToggleConfigMenu(){
-      if(this.ReceiverModel == AnthemReceiverModel.MRXSLM) return; // MRX SLM Does not support on-screen config menu.
+      if(this.ReceiverModel === AnthemReceiverModel.MRXSLM) {
+        return;
+      } // MRX SLM Does not support on-screen config menu.
       this.QueueCommand('Z1SMD');
       this.SendCommand();
     }
@@ -910,7 +912,9 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     //
     // Availability: All model
     GetConfigMenuState(){
-      if(this.ReceiverModel == AnthemReceiverModel.MRXSLM) return; // MRX SLM Does not support on-screen config menu.
+      if(this.ReceiverModel === AnthemReceiverModel.MRXSLM) {
+        return;
+      } // MRX SLM Does not support on-screen config menu.
       this.QueueCommand('Z1SMD?');
     }
 
@@ -1073,10 +1077,10 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
           // Get LED Brightness for MRX SLM
           if(Response.substring(0, 6) === 'GCLEDB' ){
             this.PanelBrightness = Number(Response.substring(6, Response.length));
-            this.PanelBrightness = 
-              this.PanelBrightness == 0 ? 0 :
-              this.PanelBrightness == 40 ? 33 :
-              this.PanelBrightness == 80 ? 66 : 100; // Map request and response to four brightness values.
+            this.PanelBrightness =
+              this.PanelBrightness === 0 ? 0 :
+                this.PanelBrightness === 40 ? 33 :
+                  this.PanelBrightness === 80 ? 66 : 100; // Map request and response to four brightness values.
             if(this.CurrentState === ControllerState.Operation){
               this.emit('PanelBrightnessChange', this.PanelBrightness);
             }
@@ -1176,7 +1180,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
               if(TempString.substring(i, i+2) === 'IN'){
                 const InputNumber = Number(TempString.substring(0, i));
                 let Name = TempString.substring(i+2, TempString.length);
-                Name = this.ReceiverModel == AnthemReceiverModel.MRXSLM ? Buffer.from(Name, 'hex').toString() : Name;
+                Name = this.ReceiverModel === AnthemReceiverModel.MRXSLM ? Buffer.from(Name, 'hex').toString() : Name;
                 this.InputNameArray[InputNumber-1] = Name;
                 if(this.CurrentState === ControllerState.Operation){
                   if(InputNumber === this.InputNameArray.length){

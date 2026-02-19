@@ -62,7 +62,7 @@ export class HKBrightnessAccessory extends HKAccessory {
   }
 
   AllZonesOff(){
-    let isSLM = this.Controller.ReceiverModel == 'MRX SLM';
+    const isSLM = this.Controller.ReceiverModel === 'MRX SLM';
     return !isSLM ? !this.Controller.GetZonePower(1) && !this.Controller.GetZonePower(2) : !this.Controller.GetZonePower(1);
   }
 

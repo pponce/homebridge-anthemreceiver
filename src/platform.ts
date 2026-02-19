@@ -63,7 +63,7 @@ export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
         if(!this.Controller.AddControllingZone(1, this.Zone1Name, true)){
           this.log.error('Error adding zone 1 to controller');
         }
-        
+
         if (this.Controller.GetConfiguredZoneNumber() > 1){ // SLM only has one zone
           if(!this.Controller.AddControllingZone(2, this.Zone2Name, false)){
             this.log.error('Error adding zone 2 to controller');
