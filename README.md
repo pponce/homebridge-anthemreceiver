@@ -23,6 +23,8 @@ Homebridge plugin for Anthem receivers.
 # Getting started
 - Install Homebridge and Homebridge UI
 - Install homebridge-anthemreceiver plugin
+  - From npm (recommended): `sudo hb-service add homebridge-anthemreceiver`
+  - From GitHub fork/branch: `sudo hb-service add <github-user>/homebridge-anthemreceiver`
 - Enable Connected Standby option on Anthem Receiver (Web UI: System Setup -> General -> General Settings)
 - Configure the plugin using the Homebridge UI
 - Restart the Homebridge server
