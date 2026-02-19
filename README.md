@@ -8,6 +8,10 @@ Homebridge plugin for Anthem Receiver.
 - Zone 1 ARC and Audio Listenning Mode accessories
 - Front Panel Brightness Accessory
 
+## Compatibility
+- Homebridge: v1.8+ and v2.x
+- Node.js: v18+
+
 ![Screenshot](AR6.jpg)
 
 # Supported models

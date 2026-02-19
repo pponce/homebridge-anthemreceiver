@@ -101,10 +101,9 @@ export class HKPowerInputAccessory {
 
     TVService
       .getCharacteristic(this.platform.Characteristic.RemoteKey)
-      .on('set', async (newValue, callback) => {
+      .onSet(async (newValue) => {
         if(!this.Controller.GetZones()[this.ZoneNumber].GetIsPowered()){
           this.Controller.PowerZone(this.ZoneNumber, true);
-          callback();
           return;
         }
 
@@ -167,7 +166,6 @@ export class HKPowerInputAccessory {
             break;
           }
         }
-        callback();
       });
 
     // Set initial power status
@@ -218,8 +216,7 @@ export class HKPowerInputAccessory {
     }
   }
 
-  HandleVolumeSet(newValue, callback){
+  HandleVolumeSet(newValue){
     this.Controller.SetZoneVolumePercentage(this.ZoneNumber, newValue);
-    callback();
   }
 }
