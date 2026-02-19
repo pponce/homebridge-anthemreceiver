@@ -28,7 +28,7 @@ No usages of the removed APIs above were found in `src/`.
   - `api.registerPlatform(PLUGIN_NAME, PLATFORM_NAME, AnthemReceiverHomebridgePlatform)`
 - Callback-based `.on('set', ...)` handling for TV remote key was migrated to `.onSet(...)`.
 - Callback-based volume set handler was migrated to modern promise/void style setter.
-- `package.json` engines + peer dependency now declare Homebridge v2-compatible ranges and Node 18+ runtime.
+- `package.json` engines + peer dependency now declare Homebridge v2-compatible ranges and Node 20+ runtime.
 
 ## Notes
 

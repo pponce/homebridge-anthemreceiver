@@ -10,7 +10,7 @@ Homebridge plugin for Anthem Receiver.
 
 ## Compatibility
 - Homebridge: v1.8+ and v2.x
-- Node.js: v18+
+- Node.js: v20+
 
 ![Screenshot](AR6.jpg)
 
