@@ -959,7 +959,12 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     // Get Zone power status
     //
     GetZonePower(ZoneNumber: number){
-      return this.Zones[ZoneNumber].GetIsPowered();
+      const Zone = this.Zones[ZoneNumber];
+      if(Zone === undefined){
+        return false;
+      }
+
+      return Zone.GetIsPowered();
     }
 
     //
