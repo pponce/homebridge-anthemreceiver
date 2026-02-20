@@ -823,28 +823,23 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     PowerZone(ZoneNumber: number, Power:boolean){
       const Zone = this.Zones[ZoneNumber];
 
-      // Update cached values immediately so HomeKit accessories can be refreshed
-      // even when the receiver does not report a power state change right away.
-      if(Zone !== undefined){
-        Zone.SetIsPowered(Power);
-
-        if(!Power){
-          Zone.SetIsMuted(false);
-          Zone.SetVolumePercentage(0);
-          Zone.SetVolume(0);
-          Zone.SetActiveInputARCEnabled(false);
-          Zone.SetALM(AnthemAudioListeningMode.NONE);
-        }
+      // Only apply optimistic cache/event updates when powering off.
+      // Power on should wait for receiver state feedback so controls remain blocked
+      // while the receiver is still booting.
+      if(Zone !== undefined && !Power){
+        Zone.SetIsPowered(false);
+        Zone.SetIsMuted(false);
+        Zone.SetVolumePercentage(0);
+        Zone.SetVolume(0);
+        Zone.SetActiveInputARCEnabled(false);
+        Zone.SetALM(AnthemAudioListeningMode.NONE);
 
         if(this.CurrentState === ControllerState.Operation){
-          this.emit('ZonePowerChange', ZoneNumber, Power);
-
-          if(!Power){
-            this.emit('ZoneMutedChange', ZoneNumber, false);
-            this.emit('ZoneVolumePercentageChange', ZoneNumber, 0);
-            this.emit('ZoneARCEnabledChange', ZoneNumber, false);
-            this.emit('ZoneALMChange', ZoneNumber, AnthemAudioListeningMode.NONE);
-          }
+          this.emit('ZonePowerChange', ZoneNumber, false);
+          this.emit('ZoneMutedChange', ZoneNumber, false);
+          this.emit('ZoneVolumePercentageChange', ZoneNumber, 0);
+          this.emit('ZoneARCEnabledChange', ZoneNumber, false);
+          this.emit('ZoneALMChange', ZoneNumber, AnthemAudioListeningMode.NONE);
         }
       }
 
