@@ -821,6 +821,28 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     // Set power to zone
     //
     PowerZone(ZoneNumber: number, Power:boolean){
+      const Zone = this.Zones[ZoneNumber];
+
+      // Only apply optimistic cache/event updates when powering off.
+      // Power on should wait for receiver state feedback so controls remain blocked
+      // while the receiver is still booting.
+      if(Zone !== undefined && !Power){
+        Zone.SetIsPowered(false);
+        Zone.SetIsMuted(false);
+        Zone.SetVolumePercentage(0);
+        Zone.SetVolume(0);
+        Zone.SetActiveInputARCEnabled(false);
+        Zone.SetALM(AnthemAudioListeningMode.NONE);
+
+        if(this.CurrentState === ControllerState.Operation){
+          this.emit('ZonePowerChange', ZoneNumber, false);
+          this.emit('ZoneMutedChange', ZoneNumber, false);
+          this.emit('ZoneVolumePercentageChange', ZoneNumber, 0);
+          this.emit('ZoneARCEnabledChange', ZoneNumber, false);
+          this.emit('ZoneALMChange', ZoneNumber, AnthemAudioListeningMode.NONE);
+        }
+      }
+
       if(Power === true){
         this.QueueCommand('Z' + ZoneNumber + 'POW1');
       } else{
@@ -932,7 +954,12 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     // Get Zone power status
     //
     GetZonePower(ZoneNumber: number){
-      return this.Zones[ZoneNumber].GetIsPowered();
+      const Zone = this.Zones[ZoneNumber];
+      if(Zone === undefined){
+        return false;
+      }
+
+      return Zone.GetIsPowered();
     }
 
     //

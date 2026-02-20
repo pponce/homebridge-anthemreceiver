@@ -46,10 +46,10 @@ export class HKVolumeAccessory extends HKAccessory {
     });
 
     // Handle ZonePowerChange event from controller
-    // Disable mute accessory when zone is powered off
+    // Only force Off when zone powers down; when powering up, wait for muted state.
     this.Controller.on('ZonePowerChange', (Zone: number, Power:boolean) => {
-      if(this.ZoneNumber === Zone){
-        this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(Power);
+      if(this.ZoneNumber === Zone && !Power){
+        this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(false);
       }
     });
   }
