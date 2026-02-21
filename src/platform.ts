@@ -40,6 +40,7 @@ export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
 
   private Port = '14999';
   private ReconnectTimeout = 30000;
+  private MaxVolumeDB:number|undefined = undefined;
   private InitialRun = true;
   private IsRunning = false;
 
@@ -104,6 +105,7 @@ export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
         // Configure Controller Error Event
         this.ConfigureControllerError();
 
+        this.Controller.SetMaxVolumeDB(this.MaxVolumeDB);
         this.Controller.Connect(this.config.Host, this.config.Port);
       }
     });
@@ -299,6 +301,10 @@ export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
 
     if(this.config.PanelBrightness !== undefined){
       this.PanelBrightness = this.config.PanelBrightness;
+    }
+
+    if(this.config.MaxVolumeDB !== undefined){
+      this.MaxVolumeDB = Number(this.config.MaxVolumeDB);
     }
 
     if(this.config.Zone1.DolbyPostProcessing !== undefined){

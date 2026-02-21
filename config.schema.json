@@ -5,29 +5,29 @@
   "schema": {
     "type": "object",
     "properties": {
-      "Host":{
-        "title":"Host",
-        "type":"string",
+      "Host": {
+        "title": "Host",
+        "type": "string",
         "required": true
       },
-      "Port":{
-        "title":"Port",
+      "Port": {
+        "title": "Port",
         "type": "integer",
         "required": true,
-        "default" : 14999,
+        "default": 14999,
         "maximum": 65535
       },
-      "PanelBrightness":{
+      "PanelBrightness": {
         "title": "Front Panel Brightness",
         "type": "boolean",
         "default": true,
         "required": true
       },
-      "Zone1":{
+      "Zone1": {
         "title": "Zone 1",
         "type": "object",
-        "properties":{
-          "Active":{
+        "properties": {
+          "Active": {
             "title": "Enable Zone 1 Power/Input",
             "type": "boolean",
             "default": true
@@ -77,11 +77,11 @@
           }
         }
       },
-      "Zone2":{
+      "Zone2": {
         "title": "Zone 2",
         "type": "object",
-        "properties":{
-          "Active":{
+        "properties": {
+          "Active": {
             "title": "Enable Zone 2 Power/Input",
             "type": "boolean",
             "default": false
@@ -119,7 +119,15 @@
             "description": ""
           }
         }
-      }     
+      },
+      "MaxVolumeDB": {
+        "title": "MaX Volume DB",
+        "type": "number",
+        "required": false,
+        "minimum": -89.5,
+        "maximum": 10,
+        "description": "Optional HomeKit volume mapping max dB configured on the Anthem. When set, HomeKit volume 1-100% maps to -89.5dB to this value, and 0% sends mute."
+      }
     }
   },
   "layout": [
@@ -127,7 +135,7 @@
       "title": "Anthem Receiver Plugin Configuration",
       "type": "fieldset",
       "expandable": false,
-      "items":[
+      "items": [
         {
           "type": "help",
           "helpvalue": "<em class='primary-text'> Please read: </em> <a href='https://github.com/EHylands/homebridge-anthemreceiver'> Homebridge-AnthemReceiver</a>"
@@ -140,7 +148,8 @@
             "Port"
           ]
         },
-        "PanelBrightness"
+        "PanelBrightness",
+        "MaxVolumeDB"
       ]
     },
     {
@@ -181,7 +190,8 @@
         "Zone2.Mute",
         "Zone2.Volume",
         "Zone2.MultipleInputs",
-        "Zone2.DolbyPostProcessing"      ]
+        "Zone2.DolbyPostProcessing"
+      ]
     },
     {
       "title": "Zone 2 - Power/Input Accessory>",
