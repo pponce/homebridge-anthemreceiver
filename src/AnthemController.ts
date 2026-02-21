@@ -250,6 +250,8 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     private ConfigMenuDisplayVisible = false;
     PanelBrightness = 0;
     private SocketTimeout = 300000; // 5 minutes
+    private MaxVolumeDb = 10;
+    private UseHomeKitDbVolumeMapping = false;
 
     SerialNumber = '';
     SoftwareVersion = '';
@@ -260,6 +262,81 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
 
       // Need to add more possible EventEmitter lsteners if all accessories are active
       this.setMaxListeners(15);
+    }
+
+    private Clamp(Value:number, Min:number, Max:number):number{
+      return Math.min(Max, Math.max(Min, Value));
+    }
+
+    private GetReceiverDbFromPercent(ReceiverPercent:number):number{
+      const Percent = this.Clamp(Math.round(ReceiverPercent), 0, 100);
+
+      if(Percent === 0){
+        return -90;
+      }
+
+      if(Percent <= 4){
+        return -90 + (Percent * 4);
+      }
+
+      if(Percent <= 13){
+        return -71 + ((Percent - 5) * 3);
+      }
+
+      if(Percent === 14){
+        return -47;
+      }
+
+      if(Percent <= 30){
+        return -45 + (Percent - 15);
+      }
+
+      return -24.5 + ((Percent - 31) * 0.5);
+    }
+
+    private GetHomeKitVolumeFromDb(DbValue:number):number{
+      const MinDb = -89.5;
+      const MaxDb = this.MaxVolumeDb;
+
+      if(DbValue <= MinDb){
+        return 1;
+      }
+
+      if(DbValue >= MaxDb){
+        return 100;
+      }
+
+      if(MaxDb <= MinDb){
+        return 100;
+      }
+
+      const Normalized = (DbValue - MinDb) / (MaxDb - MinDb);
+      return this.Clamp(Math.round(1 + (Normalized * 99)), 1, 100);
+    }
+
+    private GetDbFromHomeKitVolume(HomeKitVolumePercent:number):number{
+      const MinDb = -89.5;
+      const MaxDb = this.MaxVolumeDb;
+      const VolumePercent = this.Clamp(Math.round(HomeKitVolumePercent), 1, 100);
+
+      if(MaxDb <= MinDb){
+        return MinDb;
+      }
+
+      const Normalized = (VolumePercent - 1) / 99;
+      const RawDb = MinDb + ((MaxDb - MinDb) * Normalized);
+      return Math.round(RawDb * 2) / 2;
+    }
+
+    SetMaxVolumeDB(MaxVolumeDb:number|undefined){
+      if(MaxVolumeDb === undefined || MaxVolumeDb === null){
+        this.UseHomeKitDbVolumeMapping = false;
+        this.MaxVolumeDb = 10;
+        return;
+      }
+
+      this.MaxVolumeDb = this.Clamp(MaxVolumeDb, -89.5, 10);
+      this.UseHomeKitDbVolumeMapping = true;
     }
 
     Connect(Host: string, Port:number){
@@ -556,7 +633,23 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     }
 
     SetZoneVolumePercentage(ZoneNumber:number, VolumePercentage: number){
-      this.QueueCommand('Z' + ZoneNumber + 'PVOL' + VolumePercentage);
+      const HomeKitVolume = this.Clamp(Math.round(VolumePercentage), 0, 100);
+
+      if(HomeKitVolume === 0){
+        this.QueueCommand('Z' + ZoneNumber + 'MUT1');
+        this.SendCommand();
+        return;
+      }
+
+      this.QueueCommand('Z' + ZoneNumber + 'MUT0');
+
+      if(this.UseHomeKitDbVolumeMapping){
+        const TargetDb = this.GetDbFromHomeKitVolume(HomeKitVolume);
+        this.QueueCommand('Z' + ZoneNumber + 'VOL' + TargetDb.toFixed(1));
+      } else{
+        this.QueueCommand('Z' + ZoneNumber + 'PVOL' + HomeKitVolume);
+      }
+
       this.SendCommand();
     }
 
@@ -1182,7 +1275,13 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
           for(const ZoneNumber in this.Zones){
             const Zone = this.Zones[ZoneNumber];
             if(Response.substring(0, 6) === ('Z' + ZoneNumber + 'PVOL')){
-              Zone.SetVolumePercentage(Number(Response.substring(6, Response.length)));
+              const ReceiverVolumePercent = Number(Response.substring(6, Response.length));
+              if(this.UseHomeKitDbVolumeMapping){
+                const VolumeDb = this.GetReceiverDbFromPercent(ReceiverVolumePercent);
+                Zone.SetVolumePercentage(this.GetHomeKitVolumeFromDb(VolumeDb));
+              } else{
+                Zone.SetVolumePercentage(ReceiverVolumePercent);
+              }
 
               if(this.CurrentState === ControllerState.Operation){
                 this.emit('ZoneVolumePercentageChange', Number(ZoneNumber), Zone.GetVolumePercentage());
@@ -1196,6 +1295,14 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
             const Zone = this.Zones[ZoneNumber];
             if(Response.substring(0, 5) === ('Z' + ZoneNumber + 'VOL')){
               Zone.SetVolume(Number(Response.substring(5, Response.length)));
+
+              if(this.UseHomeKitDbVolumeMapping){
+                Zone.SetVolumePercentage(this.GetHomeKitVolumeFromDb(Zone.GetVolume()));
+
+                if(this.CurrentState === ControllerState.Operation){
+                  this.emit('ZoneVolumePercentageChange', Number(ZoneNumber), Zone.GetVolumePercentage());
+                }
+              }
             }
           }
 

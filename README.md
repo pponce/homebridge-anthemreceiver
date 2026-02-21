@@ -50,6 +50,28 @@ Homebridge plugin for Anthem receivers.
 * INFO button to show and hide menu display (Main Zone)
 * CENTER button to select option (Main Zone)
 
+
+# Volume mapping (MaX Volume DB)
+- New optional config field: **MaX Volume DB**
+- Set this to the same maximum volume dB configured on your Anthem receiver (for example `-10`).
+- When set:
+  - HomeKit volume `0%` sends **Mute**
+  - HomeKit volume `1% - 100%` maps linearly to `-89.5 dB` through your configured **MaX Volume DB** in `0.5 dB` steps
+- When **not** set:
+  - The plugin keeps the legacy/default behavior and uses the receiver percentage command (`PVOL`) directly
+
+Example in `config.json`:
+```json
+{
+  "platform": "AnthemReceiver",
+  "Host": "192.168.1.50",
+  "Port": 14999,
+  "MaxVolumeDB": -10
+}
+```
+
+> Note: In Homebridge JSON config, the property key is `MaxVolumeDB`. In the Homebridge UI label it appears as **MaX Volume DB**.
+
 # Known issues
 ## General Operation
 - It takes a few seconds for the receiver to become responsive to HomeKit commands on startup even if the receiver reports being powered on in HomeKit.
