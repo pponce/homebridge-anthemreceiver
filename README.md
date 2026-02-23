@@ -19,6 +19,7 @@ Homebridge plugin for Anthem receivers.
 - MRX 310, MRX 510, MRX 710 
 - MRX 520, MRX 720, MRX 1120 
 - MRX 540, MRX 740, MRX 1140
+- MRX SLM
 
 # Getting started
 - Install Homebridge and Homebridge UI
