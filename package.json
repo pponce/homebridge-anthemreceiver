@@ -1,7 +1,7 @@
 {
   "displayName": "Homebridge Anthem Receiver",
   "name": "homebridge-anthemreceiver",
-  "version": "0.8.4",
+  "version": "0.8.5",
   "description": "Homebridge integration for Anthem AV receiver.",
   "license": "Apache-2.0",
   "repository": {
@@ -29,15 +29,17 @@
   "dependencies": {
     "tiny-typed-emitter": "^2.1.0"
   },
+  "peerDependencies": {
+    "homebridge": "^1.8.0 || ^2.0.0-beta.0 || ^2.0.0-0"
+  },
   "devDependencies": {
     "@types/node": "^22.0.0",
-    "@typescript-eslint/eslint-plugin": "^4.33.0",
-    "@typescript-eslint/parser": "^4.33.0",
-    "eslint": "^7.32.0",
-    "homebridge": "^2.0.0-0",
-    "nodemon": "^2.0.15",
-    "rimraf": "^3.0.2",
-    "ts-node": "^9.1.1",
-    "typescript": "^4.5.4"
+    "@typescript-eslint/eslint-plugin": "^7.18.0",
+    "@typescript-eslint/parser": "^7.18.0",
+    "eslint": "^8.57.1",
+    "nodemon": "^3.1.9",
+    "rimraf": "^5.0.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5"
   }
 }
