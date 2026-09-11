@@ -140,7 +140,7 @@
       "items": [
         {
           "type": "help",
-          "helpvalue": "<em class='primary-text'> Please read: </em> <a href='https://github.com/pponce/homebridge-anthemreceiver'> Homebridge-AnthemReceiver</a>"
+          "helpvalue": "<em class='primary-text'> Please read: </em> <a href='https://github.com/pponce/homebridge-anthemreceiver-plus'> Anthem Receiver Plus</a>"
         },
         {
           "type": "flex",

@@ -20,6 +20,7 @@ jobs:
       - run: npm install --no-save --ignore-scripts 'homebridge@${{ matrix.homebridge }}'
       - run: npm run lint
       - run: npm test
+      - run: npm run test:migration
       - run: npm run check:package
       - run: npx playwright install --with-deps chromium
       - run: npm run test:ui
@@ -28,7 +29,7 @@ jobs:
           archive=$(npm pack --ignore-scripts --silent)
           destination=$(mktemp -d)
           npm install --prefix "$destination" --omit=dev --ignore-scripts "$PWD/$archive" 'homebridge@${{ matrix.homebridge }}'
-          node -e 'require(process.argv[1])' "$destination/node_modules/homebridge-anthemreceiver"
+          node -e 'require(process.argv[1])' "$destination/node_modules/homebridge-anthemreceiver-plus"
   git-install:
     runs-on: ubuntu-latest
     steps:
@@ -38,10 +39,11 @@ jobs:
       - name: Install this commit directly from GitHub with lifecycle scripts enabled
         env:
           SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          SOURCE_REPOSITORY: ${{ github.event.pull_request.head.repo.full_name || github.repository }}
         run: |
           destination=$(mktemp -d)
-          npm install --prefix "$destination" --omit=dev "pponce/homebridge-anthemreceiver#$SOURCE_SHA" 'homebridge@^1.8.0'
-          node - "$destination/node_modules/homebridge-anthemreceiver" <<'NODE'
+          npm install --prefix "$destination" --omit=dev "$SOURCE_REPOSITORY#$SOURCE_SHA" 'homebridge@^1.8.0'
+          node - "$destination/node_modules/homebridge-anthemreceiver-plus" <<'NODE'
           const assert = require('node:assert/strict');
           const fs = require('node:fs');
           const path = require('node:path');
