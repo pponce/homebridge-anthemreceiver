@@ -54,8 +54,8 @@ test('malformed count is logged and cannot escape parser callback', async t => {
   assert.doesNotThrow(() => controller.AnalyseResponse(Buffer.from('ICNfoo;ICN999999;')));
   assert.equal(controller.GetInputs().length, before);
 });
-test('older protocol handshake and SLM names remain supported', async t => {
-  for (const model of ['MRX 710', 'MRX SLM']) {
+test('MRX 540, older protocol handshake and SLM names remain supported', async t => {
+  for (const model of ['MRX 540', 'MRX 710', 'MRX SLM']) {
     const { controller } = await ready(t, { model });
     assert.equal(controller.ReceiverModel, model);
     assert.equal(controller.GetInputs()[0], 'Cinema');

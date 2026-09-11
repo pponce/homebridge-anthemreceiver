@@ -93,7 +93,7 @@ The installed plugin requires the complete `dist` directory. The `prepare` build
 
 A Git package specification has the form `github:pponce/homebridge-anthemreceiver#<branch-or-tag>`. Use it with an installer that accepts Git dependencies and installs into your existing Homebridge plugin location. Some `hb-service add` versions validate only npm names/versions rather than passing through arbitrary Git specifications. Confirm your exact working command and installed Homebridge UI version before changing workflows.
 
-The current development branch is a draft and is not yet a validated install candidate. Full build/package checks and the user's exact installation path remain release gates; see [IMPROVEMENT_PLAN.md](IMPROVEMENT_PLAN.md). No compiled output is fabricated when build dependencies are unavailable.
+The current development branch remains draft. Full build, compiled tests, browser tests, and production archive installation have passed CI. CI also checks a clean npm GitHub install of the exact commit with lifecycle scripts enabled. The user's installed hb-service version and receiver hardware behavior remain to be verified; see [IMPROVEMENT_PLAN.md](IMPROVEMENT_PLAN.md).
 
 # Compatibility notes
 - Direct listening-mode switches are supported on protocol V02 models. Older receivers retain Apple Remote listening-mode cycling; direct selection is unavailable.

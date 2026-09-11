@@ -313,4 +313,20 @@ PR: https://github.com/pponce/homebridge-anthemreceiver/pull/10
 - Passed TypeScript checking, compiled regression tests, package-content checks, all four Chromium browser tests, and installation/import of the archive using production dependencies.
 - This resolves the earlier dependency-backed build and browser execution blockers. Historical local limitations above remain accurate for that environment.
 - CI validates generated dist in the archive; it does not establish the exact hb-service GitHub installation path or receiver hardware behavior.
-- Next user input: receiver model and the exact existing hb-service installation command, followed by a backed-up candidate installation and hardware validation.
+- Receiver and existing installation command supplied below. The installed hb-service/UI and Node/npm versions remain to verify before candidate installation.
+
+### 2026-09-11 — MRX 540 8K and installation workflow confirmed by owner
+
+- Target hardware: Anthem MRX 540 8K. Firmware and the exact model string returned by `IDM?` remain unverified; the code supports `MRX 540`.
+- Owner's existing workflow:
+
+  ```bash
+  sudo hb-service stop
+  sudo hb-service add pponce/homebridge-anthemreceiver
+  sudo hb-service start
+  ```
+
+- Added MRX 540 to the fake-receiver handshake regression test; the controller suite passes locally. This is simulation coverage, not a physical receiver result.
+- Added a separate CI job installing the exact PR commit using npm's `pponce/repository#commit` GitHub syntax, into a clean prefix with `--omit=dev` and lifecycle scripts enabled. It verifies generated dist, entry-point loading, custom UI assets, and the UI runtime dependency. Run outcome is recorded by GitHub Actions.
+- Current upstream hb-service parses and validates npm names/versions before invoking npm, and rejects this GitHub shorthand. This does not establish what the owner's installed version accepts. Obtain `sudo hb-service --version`, `node --version`, and `npm --version` before prescribing a branch argument.
+- Keep Homebridge running while collecting versions. Before any candidate install, download a Homebridge backup and establish rollback to the currently installed revision. Do not merge the draft to make installation possible.
