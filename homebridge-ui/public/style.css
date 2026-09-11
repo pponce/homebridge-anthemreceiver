@@ -1,0 +1,33 @@
+.anthem-settings, .anthem-settings * { box-sizing:border-box; }
+.anthem-settings { max-width:960px; margin:auto; padding:.25rem; color:var(--bs-body-color,inherit); font:inherit; }
+.anthem-intro { border-left:4px solid #d99130; padding:.4rem 1.2rem; margin-bottom:1.5rem; }
+.anthem-eyebrow { font-size:.72rem; font-weight:700; letter-spacing:.13em; }
+.anthem-intro h2 { margin:.45rem 0; font-size:1.7rem; }
+.anthem-intro p, .anthem-help, .anthem-footer { opacity:.8; line-height:1.5; }
+.anthem-card { margin:1rem 0; padding:1.15rem; border:1px solid var(--bs-border-color,#8886); border-radius:.75rem; }
+.anthem-card h3 { margin:0 0 1rem; font-size:1.2rem; }
+.anthem-heading { display:flex; align-items:baseline; justify-content:space-between; gap:1rem; }
+.anthem-badge { font-size:.75rem; border:1px solid var(--bs-border-color,#8886); border-radius:1rem; padding:.15rem .6rem; }
+.anthem-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.9rem 1.2rem; }
+.anthem-field { min-width:0; }
+.anthem-field label { display:block; font-weight:600; margin-bottom:.3rem; }
+.anthem-field input:not([type=checkbox]) { width:100%; min-width:0; }
+.anthem-field small { display:block; opacity:.8; line-height:1.45; margin-top:.3rem; }
+.anthem-field input[aria-invalid=true] { border-color:#c53f3f; }
+.anthem-toggle { display:flex; align-items:flex-start; gap:.6rem; }
+.anthem-toggle input { margin-top:.3rem; }
+.anthem-toggle label { font-weight:500; }
+.anthem-options { margin-top:1rem; }
+.anthem-settings summary { cursor:pointer; font-weight:600; }
+.anthem-options summary { margin-bottom:1rem; }
+.anthem-actions { display:flex; flex-wrap:wrap; gap:.6rem; margin:1rem 0 .6rem; }
+.anthem-settings .alert { padding:.8rem; border:1px solid var(--bs-border-color,#8886); border-radius:.5rem; margin:1rem 0; }
+.anthem-settings [hidden] { display:none !important; }
+.anthem-help, .anthem-footer { font-size:.9rem; }
+.anthem-preview { overflow-x:auto; margin-top:1rem; }
+.anthem-preview table { width:100%; border-collapse:collapse; }
+.anthem-preview td, .anthem-preview th { text-align:left; padding:.5rem; border-bottom:1px solid var(--bs-border-color,#8886); }
+.anthem-preview caption { caption-side:top; text-align:left; padding:.5rem 0; }
+.anthem-settings :focus-visible { outline:2px solid #d99130; outline-offset:3px; }
+.anthem-field .unsupported { font-weight:400; opacity:.8; }
+@media(max-width:560px) { .anthem-grid { grid-template-columns:1fr; } .anthem-card { padding:.8rem; } .anthem-intro h2 { font-size:1.4rem; } }

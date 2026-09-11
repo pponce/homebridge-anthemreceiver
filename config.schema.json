@@ -8,14 +8,16 @@
       "Host": {
         "title": "Host",
         "type": "string",
-        "required": true
+        "required": true,
+        "minLength": 1
       },
       "Port": {
         "title": "Port",
         "type": "integer",
         "required": true,
         "default": 14999,
-        "maximum": 65535
+        "maximum": 65535,
+        "minimum": 1
       },
       "PanelBrightness": {
         "title": "Front Panel Brightness",
@@ -54,7 +56,7 @@
             "default": true
           },
           "ALM": {
-            "title": "Audio Listenning Mode",
+            "title": "Audio Listening Mode",
             "type": "boolean",
             "default": true,
             "description": ""
@@ -121,7 +123,7 @@
         }
       },
       "MaxVolumeDB": {
-        "title": "MaX Volume DB",
+        "title": "Maximum volume (dB)",
         "type": "number",
         "required": false,
         "minimum": -89.5,
@@ -138,7 +140,7 @@
       "items": [
         {
           "type": "help",
-          "helpvalue": "<em class='primary-text'> Please read: </em> <a href='https://github.com/EHylands/homebridge-anthemreceiver'> Homebridge-AnthemReceiver</a>"
+          "helpvalue": "<em class='primary-text'> Please read: </em> <a href='https://github.com/pponce/homebridge-anthemreceiver'> Homebridge-AnthemReceiver</a>"
         },
         {
           "type": "flex",
@@ -194,7 +196,7 @@
       ]
     },
     {
-      "title": "Zone 2 - Power/Input Accessory>",
+      "title": "Zone 2 - Power/Input Accessory",
       "type": "fieldset",
       "expandable": true,
       "items": [
@@ -206,5 +208,7 @@
         "Zone2.Name"
       ]
     }
-  ]
+  ],
+  "customUi": true,
+  "customUiPath": "homebridge-ui"
 }

@@ -1,6 +1,6 @@
-import { Service } from 'homebridge';
-import { AnthemController} from './AnthemController';
-import { AnthemReceiverHomebridgePlatform } from './platform';
+import type { Service } from 'homebridge';
+import type { AnthemController} from './AnthemController';
+import type { AnthemReceiverHomebridgePlatform } from './platform';
 import { HKAccessory } from './HKAccessory';
 
 export class HKVolumeAccessory extends HKAccessory {
@@ -26,10 +26,10 @@ export class HKVolumeAccessory extends HKAccessory {
       .setCharacteristic(this.platform.Characteristic.SerialNumber, Controller.SerialNumber + ' Volume');
 
     this.service.getCharacteristic(this.platform.Characteristic.On)
-      .onSet(this.SetMute.bind(this));
+      .onSet(value => this.platform.HandleSet(() => this.SetMute(value)));
 
     this.service.getCharacteristic(this.platform.Characteristic.Brightness)
-      .onSet(this.SetBrightness.bind(this));
+      .onSet(value => this.platform.HandleSet(() => this.SetBrightness(value)));
 
     // Hande ZoneVolumePercentageChange event from controller
     this.Controller.on('ZoneVolumePercentageChange', (Zone:number, VolumePercentage:number)=> {
@@ -41,7 +41,7 @@ export class HKVolumeAccessory extends HKAccessory {
     // Handle ZoneMutedChange event from controller
     this.Controller.on('ZoneMutedChange', (Zone: number, Muted:boolean) => {
       if(this.ZoneNumber === Zone){
-        this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(!Muted);
+        this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(this.Controller.GetZonePower(this.ZoneNumber) && !Muted);
       }
     });
 

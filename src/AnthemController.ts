@@ -1,8 +1,13 @@
-import { TypedEmitter } from 'tiny-typed-emitter';
+import { EventEmitter } from 'node:events';
+import { ResponseFramer, validateReply } from './protocol';
+import { capabilities } from './capabilities';
+import { CommandTransactions } from './transactions';
 import net = require('net');
 
 export interface AnthemControllerEvent {
     'ControllerReadyForOperation': () => void;
+    'ModelDetected': (model: AnthemReceiverModel) => void;
+    'ControllerUnavailable': () => void;
     'PanelBrightnessChange': (Brightness: number) => void;
     'ZonePowerChange': (Zone: number, Power: boolean) => void;
     'ZoneMutedChange': (Zone: number, Muted:boolean)=> void;
@@ -152,6 +157,9 @@ export class AnthemZone{
   private ActiveInputARCEnabled = false;
   private IsPowered = false;
   private PowerConfigured = false;
+  private MutedConfigured = false;
+  private InputConfigured = false;
+  private VolumeConfigured = false;
   private VolumePercentage = 0;
   private Volume = 0;
   private AudioListeningMode = AnthemAudioListeningMode.NONE;
@@ -169,6 +177,7 @@ export class AnthemZone{
 
   SetIsMuted(Muted:boolean){
     this.IsMuted = Muted;
+    this.MutedConfigured = true;
   }
 
   GetIsPowered():boolean{
@@ -176,6 +185,12 @@ export class AnthemZone{
   }
 
   SetIsPowered(Powered: boolean){
+    if(!Powered) {
+      this.MutedConfigured = this.InputConfigured = this.VolumeConfigured = false;
+      this.IsMuted = this.ActiveInputARCEnabled = false;
+      this.VolumePercentage = this.Volume = 0;
+      this.AudioListeningMode = AnthemAudioListeningMode.NONE;
+    }
     this.IsPowered = Powered;
     this.PowerConfigured = true;
   }
@@ -190,6 +205,7 @@ export class AnthemZone{
 
   SetActiveInput(ActiveInput: number){
     this.ActiveInput = ActiveInput;
+    this.InputConfigured = true;
   }
 
   GetARCConfigured():boolean{
@@ -222,10 +238,18 @@ export class AnthemZone{
 
   SetVolume(Volume:number){
     this.Volume = Volume;
+    this.VolumeConfigured = true;
   }
 
   IsZoneConfigured():boolean{
-    return this.PowerConfigured;
+    return this.PowerConfigured && (!this.IsPowered || (this.MutedConfigured && this.InputConfigured && this.VolumeConfigured));
+  }
+
+  Reset(){
+    this.PowerConfigured = this.MutedConfigured = this.InputConfigured = this.VolumeConfigured = false;
+    this.IsPowered = this.IsMuted = this.ActiveInputARCEnabled = false;
+    this.ActiveInput = this.VolumePercentage = this.Volume = 0;
+    this.AudioListeningMode = AnthemAudioListeningMode.NONE;
   }
 
   SetALM(AudioListeningMode:number){
@@ -237,7 +261,7 @@ export class AnthemZone{
   }
 }
 
-export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
+export class AnthemController extends EventEmitter {
 
     private Host = '';
     private Port = 14999;
@@ -257,11 +281,25 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     SoftwareVersion = '';
     ReceiverModel = AnthemReceiverModel.Undefined;
 
-    constructor() {
+    private readonly Framer = new ResponseFramer();
+    private Stopped = true;
+    private ConnectionFailed = true;
+    private Connected = false;
+    private RetryAttempt = 0;
+    private ReconnectTimer?: ReturnType<typeof setTimeout>;
+    private HandshakeTimer?: ReturnType<typeof setTimeout>;
+    private KeepAliveTimer?: ReturnType<typeof setTimeout>;
+    private StableTimer?: ReturnType<typeof setTimeout>;
+    private CapturedCommands?: string[];
+    private readonly Transactions: CommandTransactions;
+
+    constructor(private readonly Timing = { connect: 10000, handshake: 30000, idle: 300000, keepalive: 150000, reconnect: 3000, maxReconnect: 60000, command: 7000 }) {
       super();
 
       // Need to add more possible EventEmitter lsteners if all accessories are active
-      this.setMaxListeners(15);
+      this.setMaxListeners(32);
+      this.Transactions = new CommandTransactions(commands => this.WriteCommands(commands), () => this.IsReady(), this.Timing.command, 16,
+        () => this.Disconnect('Receiver command confirmation timed out'));
     }
 
     private Clamp(Value:number, Min:number, Max:number):number{
@@ -340,42 +378,134 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     }
 
     Connect(Host: string, Port:number){
-
-      this.Client = new net.Socket();
-      this.Client.setTimeout(this.SocketTimeout);
-
+      this.Stop();
       this.Host = Host;
       this.Port = Port;
+      this.Stopped = false;
+      this.RetryAttempt = 0;
+      this.OpenConnection();
+    }
 
-      this.Client.on('data', (data) => {
-        this.AnalyseResponse(data);
+    private OpenConnection(){
+      if(this.Stopped) return;
+      this.ConnectionFailed = false;
+      this.Connected = false;
+      this.CurrentState = ControllerState.Idle;
+      this.CommandArray = [];
+      this.Framer.reset();
+      this.SerialNumber = this.SoftwareVersion = '';
+      this.ReceiverModel = AnthemReceiverModel.Undefined;
+      this.InputNameArrayOld = this.InputNameArray;
+      this.InputNameArray = [];
+      for(const zone of Object.values(this.Zones)) zone.Reset();
+      const client = new net.Socket();
+      this.Client = client;
+      client.setTimeout(this.Timing.connect);
+      const current = () => client === this.Client && !this.Stopped && !this.ConnectionFailed;
+      client.on('data', data => { if(current()) this.AnalyseResponse(data); });
+      client.on('error', error => { if(current()) this.Disconnect(error.message); });
+      client.on('timeout', () => { if(current()) this.Disconnect('Receiver connection timed out'); });
+      client.on('end', () => { if(current()) this.Disconnect('Receiver closed the connection'); });
+      client.on('close', () => { if(current()) this.Disconnect('Receiver connection closed'); });
+      try {
+        client.connect(this.Port, this.Host, () => {
+          if(!current()) return;
+          this.Connected = true;
+          client.setTimeout(this.Timing.idle);
+          this.HandshakeTimer = setTimeout(() => this.Disconnect('Receiver initialization timed out'), this.Timing.handshake);
+          this.GetModel();
+        });
+      } catch(error) {
+        this.Disconnect(error instanceof Error ? error.message : 'Could not connect');
+      }
+    }
+
+    private ClearTimers(){
+      clearTimeout(this.ReconnectTimer);
+      clearTimeout(this.HandshakeTimer);
+      clearTimeout(this.KeepAliveTimer);
+      clearTimeout(this.StableTimer);
+      this.ReconnectTimer = this.HandshakeTimer = this.KeepAliveTimer = this.StableTimer = undefined;
+    }
+
+    private Disconnect(message: string){
+      if(this.Stopped || this.ConnectionFailed) return;
+      this.ConnectionFailed = true;
+      this.Connected = false;
+      this.CurrentState = ControllerState.Idle;
+      this.ClearTimers();
+      this.Transactions.disconnect();
+      this.CommandArray = [];
+      this.Framer.reset();
+      this.Client.destroy();
+      this.emit('ControllerUnavailable');
+      this.emit('ControllerError', AnthemControllerError.CONNECTION_ERROR, message);
+      const delay = Math.min(this.Timing.maxReconnect, this.Timing.reconnect * 2 ** Math.min(this.RetryAttempt++, 5));
+      this.ReconnectTimer = setTimeout(() => { this.ReconnectTimer = undefined; this.OpenConnection(); }, delay + Math.floor(delay * Math.random() * 0.1));
+      this.ReconnectTimer.unref();
+    }
+
+    Stop(){
+      this.Stopped = true;
+      this.ConnectionFailed = true;
+      this.Connected = false;
+      this.CurrentState = ControllerState.Idle;
+      this.ClearTimers();
+      this.Transactions?.disconnect();
+      this.Framer.reset();
+      this.CommandArray = [];
+      this.Client.destroy();
+    }
+
+    IsReady(): boolean {
+      return !this.Stopped && this.Connected && !this.Client.destroyed && this.CurrentState === ControllerState.Operation;
+    }
+
+    RunCommand(action: () => void): Promise<void> {
+      return this.Transactions.run(() => {
+        this.CapturedCommands = [];
+        try {
+          action();
+          for(const command of this.CapturedCommands) {
+            const zone = /^Z([12])(?!POW)/.exec(command);
+            if(zone && (!this.GetZonePower(Number(zone[1])) || !this.GetZone(Number(zone[1])).IsZoneConfigured())) {
+              throw new Error('Receiver zone is powered off or still starting');
+            }
+          }
+          return this.CapturedCommands;
+        } finally { this.CapturedCommands = undefined; this.CommandArray = []; }
       });
+    }
 
-      this.Client.on('error', (err) =>{
-        this.CurrentState = ControllerState.Idle;
-        this.emit('ControllerError', AnthemControllerError.CONNECTION_ERROR, err.message);
-        this.Client.destroy();
-
+    private WriteCommands(commands: string[]): Promise<void> {
+      if(!this.Connected || this.Client.destroyed || !this.Client.writable) return Promise.reject(new Error('Receiver is disconnected'));
+      const message = commands.map(command => command + ';').join('');
+      this.emit('ShowDebugInfo', 'Sending: ' + message);
+      return new Promise((resolve, reject) => {
+        this.Client.write(message, error => error ? reject(error) : resolve());
       });
+    }
 
-      this.Client.on('timeout', ()=>{
-        this.CurrentState = ControllerState.Idle;
-        this.emit('ControllerError', AnthemControllerError.CONNECTION_ERROR, 'Timeout');
-        this.Client.destroy();
-      });
+    RemoveControllingZone(zone: number){ delete this.Zones[zone]; }
 
-      this.Client.connect(this.Port, this.Host, () => {
-        // This controller supports 2 protocols:
-        // - Protocol V02 used for X40 Model Serie
-        // - Protocol V01 used for X10 and X20 Model Serie
-        // - Need Model Number to send proper commands to receiver
-        this.GetModel();
-      });
+    PublishSnapshot(){
+      if(!this.IsReady()) return;
+      this.emit('PanelBrightnessChange', this.PanelBrightness);
+      this.emit('InputChange', this.InputNameArray);
+      for(const zone of Object.values(this.Zones)) {
+        const n = zone.ZoneNumber;
+        this.emit('ZonePowerChange', n, zone.GetIsPowered());
+        this.emit('ZoneInputChange', n, zone.GetActiveInput());
+        this.emit('ZoneMutedChange', n, zone.GetIsMuted());
+        this.emit('ZoneVolumePercentageChange', n, zone.GetIsPowered() ? zone.GetVolumePercentage() : 0);
+        this.emit('ZoneARCEnabledChange', n, zone.GetActiveInputARCEnabled());
+        this.emit('ZoneALMChange', n, zone.GetALM());
+      }
     }
 
     AddControllingZone(NewZone: number, ZoneName: string, IsMainZone: boolean):boolean {
       // We can only add a new zone while the controller is Idle
-      if(this.CurrentState !== ControllerState.Idle){
+      if(this.CurrentState === ControllerState.Operation){
         return false;
       }
 
@@ -473,17 +603,10 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     // Clear the Command Buffer and send to receiver
     //
     private SendCommand(){
-
-      let CommandString = '';
-      for(let i = 0 ; i < this.CommandArray.length ; i ++){
-        CommandString = CommandString + this.CommandArray[i] + ';';
-      }
-
-      // Show extended debug information in homebridge log
-      this.emit('ShowDebugInfo', 'Sending: ' + CommandString);
-
-      this.Client.write(CommandString);
-      this.CommandArray = [];
+      const commands = this.CommandArray.splice(0);
+      if(!commands.length) return;
+      if(this.CapturedCommands) { this.CapturedCommands.push(...commands); return; }
+      void this.WriteCommands(commands).catch(error => this.Disconnect(error.message));
     }
 
     //
@@ -526,10 +649,14 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     //
     // Availability: All models supported by controller
     private SendKeepAlivePacket(){
-      setTimeout(() => {
+      clearTimeout(this.KeepAliveTimer);
+      if(!this.IsReady()) return;
+      this.KeepAliveTimer = setTimeout(() => {
+        if(!this.IsReady()) return;
         this.GetModelFromReceiver();
         this.SendCommand();
-      }, this.SocketTimeout/2);
+      }, this.Timing.keepalive);
+      this.KeepAliveTimer.unref();
     }
 
     //
@@ -816,7 +943,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
       if(this.IsProtocolV02()){
         this.QueueCommand('Z' + ZoneNumber + 'ALM' + AudioMode);
       } else{
-        //
+        throw new Error('Direct listening-mode selection is unavailable on this model; use the Apple Remote cycle control');
       }
       this.SendCommand();
     }
@@ -914,28 +1041,6 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     // Set power to zone
     //
     PowerZone(ZoneNumber: number, Power:boolean){
-      const Zone = this.Zones[ZoneNumber];
-
-      // Only apply optimistic cache/event updates when powering off.
-      // Power on should wait for receiver state feedback so controls remain blocked
-      // while the receiver is still booting.
-      if(Zone !== undefined && !Power){
-        Zone.SetIsPowered(false);
-        Zone.SetIsMuted(false);
-        Zone.SetVolumePercentage(0);
-        Zone.SetVolume(0);
-        Zone.SetActiveInputARCEnabled(false);
-        Zone.SetALM(AnthemAudioListeningMode.NONE);
-
-        if(this.CurrentState === ControllerState.Operation){
-          this.emit('ZonePowerChange', ZoneNumber, false);
-          this.emit('ZoneMutedChange', ZoneNumber, false);
-          this.emit('ZoneVolumePercentageChange', ZoneNumber, 0);
-          this.emit('ZoneARCEnabledChange', ZoneNumber, false);
-          this.emit('ZoneALMChange', ZoneNumber, AnthemAudioListeningMode.NONE);
-        }
-      }
-
       if(Power === true){
         this.QueueCommand('Z' + ZoneNumber + 'POW1');
       } else{
@@ -1060,25 +1165,10 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     // Set receiver model from string received from receiver
     //
     private SetModel(ModelString: string){
-
-      // Check for extra white space at the end of ModelString
-      let ModifiedModelString = ModelString;
-      if(ModifiedModelString.slice(ModifiedModelString.length-1) === ' '){
-        ModifiedModelString = ModifiedModelString.slice(0, ModifiedModelString.length-1);
-      }
-
-      for(let i = 0 ; i < AllAnthemReceiverModel.length ; i++){
-        if(ModifiedModelString === AllAnthemReceiverModel[i]){
-          // Found a match
-          this.ReceiverModel = AllAnthemReceiverModel[i];
-          return;
-        }
-      }
-
-      // No match.
-      // For debug purpose, asssume model MRX 740
-      this.emit('ControllerError', AnthemControllerError.INVALID_MODEL_STRING_RECEIVED, ModifiedModelString);
-      this.ReceiverModel = AnthemReceiverModel.MRX740;
+      const model = capabilities(ModelString).model as AnthemReceiverModel;
+      const changed = this.ReceiverModel !== model;
+      this.ReceiverModel = model;
+      if(changed) this.emit('ModelDetected', model);
     }
 
     //
@@ -1147,10 +1237,24 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
     // Process data received from receiver
     //
     private AnalyseResponse(Data: Buffer){
-      const SplitString = Data.toString().split(';');
+      let replies: string[];
+      try { replies = this.Framer.push(Data); }
+      catch(error) { this.Disconnect(error instanceof Error ? error.message : 'Invalid receiver data'); return; }
+      for(const response of replies) {
+        try {
+          validateReply(response);
+          this.ProcessResponse(response);
+          this.Transactions.receive(response);
+        } catch(error) {
+          const message = error instanceof Error ? error.message : 'Invalid receiver response';
+          this.emit('ControllerError', AnthemControllerError.INVALID_COMMAND, message);
+          if(response.startsWith('IDM')) this.Disconnect(message);
+        }
+      }
+    }
 
-      for(let i = 0 ; i < SplitString.length - 1 ; i ++){
-        let Response = SplitString[i];
+    private ProcessResponse(Response: string){
+
 
         this.emit('ShowDebugInfo', 'Reading: "' + Response + '"');
 
@@ -1207,9 +1311,10 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
           }
 
           // Get Dolby Post Processing
-          if(Response.substring(0, 2) === 'IS' && Response.substring(3, 5) === 'DV'){
-            const Input = Number(Response[2]);
-            const DolbyAudioMode = Number(Response[5]);
+          const dolby = /^IS(\d+)DV([0-3])$/.exec(Response);
+          if(dolby){
+            const Input = Number(dolby[1]);
+            const DolbyAudioMode = Number(dolby[2]);
 
             for(const ZoneNumber in this.Zones){
               const Zone = this.Zones[ZoneNumber];
@@ -1231,10 +1336,11 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
           for(const ZoneNumber in this.Zones){
             const Zone = this.Zones[ZoneNumber];
             if(Response.substring(0, 5) === ('Z' + ZoneNumber + 'POW')){
+              const wasPowered = Zone.GetIsPowered();
               Zone.SetIsPowered(Response[5] === '1');
 
               // Update zone info when power is on
-              if(Zone.GetIsPowered()){
+              if(Zone.GetIsPowered() && (!wasPowered || this.CurrentState === ControllerState.Configure)){
                 this.UpdateOnZonePower(Number(ZoneNumber));
               }
 
@@ -1250,7 +1356,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
           for(const ZoneNumber in this.Zones){
             const Zone = this.Zones[ZoneNumber];
             if(Response.substring(0, 5) === ('Z' + ZoneNumber + 'ALM')){
-              Zone.SetALM(Number(Response[5]));
+              Zone.SetALM(Number(Response.slice(5)));
               if(this.CurrentState === ControllerState.Operation){
                 this.emit('ZoneALMChange', Number(ZoneNumber), Zone.GetALM());
               }
@@ -1306,25 +1412,21 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
             }
           }
 
-          // Get Input Name
-          if(Response.substring(0, 2) === 'IS'){
-            const TempString = Response.substring(2, Response.length);
-            // Find position of first 'IN' in string
-            for(let i = 0 ; i < Response.length-2; i++){
-              if(TempString.substring(i, i+2) === 'IN'){
-                const InputNumber = Number(TempString.substring(0, i));
-                let Name = TempString.substring(i+2, TempString.length);
-                Name = this.ReceiverModel === AnthemReceiverModel.MRXSLM ? Buffer.from(Name, 'hex').toString() : Name;
-                this.InputNameArray[InputNumber-1] = Name;
-                if(this.CurrentState === ControllerState.Operation){
-                  if(InputNumber === this.InputNameArray.length){
-                    if(this.GetInputHasChange()){
-                      this.emit('InputChange', this.InputNameArray);
-                    }
-                  }
-                  break;
-                }
-              }
+          // Protocol V02 input names (the name itself may contain "IN").
+          const inputName = /^IS(\d+)IN(.*)$/.exec(Response);
+          if(inputName){
+            const InputNumber = Number(inputName[1]);
+            if(InputNumber > this.InputNameArray.length) throw new Error('Input name arrived without a valid input count');
+            let Name = inputName[2];
+            if(this.ReceiverModel === AnthemReceiverModel.MRXSLM) {
+              if(!/^(?:[0-9a-fA-F]{2})*$/.test(Name)) throw new Error('Invalid SLM input name encoding');
+              Name = Buffer.from(Name, 'hex').toString('utf8');
+            }
+            if(!Number.isInteger(InputNumber) || InputNumber < 1 || InputNumber > this.InputNameArray.length) throw new Error('Invalid input-name identifier');
+            this.InputNameArray[InputNumber - 1] = Name;
+            if(this.CurrentState === ControllerState.Operation && this.IsAllInputConfigured() && this.GetInputHasChange()) {
+              this.InputNameArrayOld = [...this.InputNameArray];
+              this.emit('InputChange', this.InputNameArray);
             }
           }
 
@@ -1333,10 +1435,11 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
             const InputNumber = Number(Response.substring(3, 5));
             const Name = Response.substring(5, Response.length);
 
+            if(!Number.isInteger(InputNumber) || InputNumber < 1 || InputNumber > this.InputNameArray.length) throw new Error('Invalid input-name identifier');
             this.InputNameArray[InputNumber - 1] = Name;
 
             if(this.CurrentState === ControllerState.Operation){
-              if(InputNumber === this.InputNameArray.length){
+              if(this.IsAllInputConfigured()){
                 if(this.GetInputHasChange()){
                   this.emit('InputChange', this.InputNameArray);
                 }
@@ -1381,8 +1484,9 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
           for(const ZoneNumber in this.Zones){
             const Zone = this.Zones[ZoneNumber];
             if(Zone.GetIsMainZone() && this.IsProtocolV02()){
-              if(Response.substring(0, 6) === ('IS' + Zone.GetActiveInput() + 'ARC')){
-                const ARCEnabled = Response[6] === '1';
+              const arc = /^IS(\d+)ARC([01])$/.exec(Response);
+              if(arc && Number(arc[1]) === Zone.GetActiveInput()){
+                const ARCEnabled = arc[2] === '1';
                 Zone.SetActiveInputARCEnabled(ARCEnabled);
                 this.emit('ZoneARCEnabledChange', Number(ZoneNumber), ARCEnabled);
                 break;
@@ -1393,7 +1497,7 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
           // Get Zone ARC Enabled ProtocolV01
           for(const ZoneNumber in this.Zones){
             const Zone = this.Zones[ZoneNumber];
-            if(Response.substring(0, 5) === ('Z' + ZoneNumber + 'ARC')){
+            if(new RegExp('^Z' + ZoneNumber + 'ARC[01]$').test(Response)){
               const ARCEnabled = Response[5] === '1';
               Zone.SetActiveInputARCEnabled(ARCEnabled);
               this.emit('ZoneARCEnabledChange', Number(ZoneNumber), ARCEnabled);
@@ -1434,13 +1538,16 @@ export class AnthemController extends TypedEmitter<AnthemControllerEvent> {
             ){
               // Panel is configured, now ready for operation
               this.CurrentState = ControllerState.Operation;
+              clearTimeout(this.HandshakeTimer);
+              this.StableTimer = setTimeout(() => { this.RetryAttempt = 0; }, 60000);
+              this.StableTimer.unref();
               this.emit('ControllerReadyForOperation');
+              this.PublishSnapshot();
 
               // Start keep alice process (GetModel)
               this.SendKeepAlivePacket();
             }
           }
         }
-      }
     }
 }

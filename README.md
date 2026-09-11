@@ -25,7 +25,7 @@ Homebridge plugin for Anthem receivers.
 - Install Homebridge and Homebridge UI
 - Install homebridge-anthemreceiver plugin
   - From npm (recommended): `sudo hb-service add homebridge-anthemreceiver`
-  - From GitHub fork/branch: `sudo hb-service add <github-user>/homebridge-anthemreceiver`
+  - For a GitHub branch, see the GitHub installation notes below; accepted `hb-service add` syntax depends on your Homebridge UI version.
 - Enable Connected Standby option on Anthem Receiver (Web UI: System Setup -> General -> General Settings)
 - Configure the plugin using the Homebridge UI
 - Restart the Homebridge server
@@ -52,12 +52,12 @@ Homebridge plugin for Anthem receivers.
 * CENTER button to select option (Main Zone)
 
 
-# Volume mapping (MaX Volume DB)
-- New optional config field: **MaX Volume DB**
+# Volume mapping (Maximum volume in dB)
+- New optional config field: **Maximum volume (dB)**
 - Set this to the same maximum volume dB configured on your Anthem receiver (for example `-10`).
 - When set:
   - HomeKit volume `0%` sends **Mute**
-  - HomeKit volume `1% - 100%` maps linearly to `-89.5 dB` through your configured **MaX Volume DB** in `0.5 dB` steps
+  - HomeKit volume `1% - 100%` maps linearly to `-89.5 dB` through your configured **Maximum volume (dB)** in `0.5 dB` steps
 - When **not** set:
   - The plugin keeps the legacy/default behavior and uses the receiver percentage command (`PVOL`) directly
 
@@ -71,13 +71,31 @@ Example in `config.json`:
 }
 ```
 
-> Note: In Homebridge JSON config, the property key is `MaxVolumeDB`. In the Homebridge UI label it appears as **MaX Volume DB**.
+> Note: In Homebridge JSON config, the property key is `MaxVolumeDB`. In the Homebridge UI label it appears as **Maximum volume (dB)**.
 
-# Known issues
-## General Operation
-- It takes a few seconds for the receiver to become responsive to HomeKit commands on startup even if the receiver reports being powered on in HomeKit.
-## External Power/Input Accessories
-- Zone needs to be powered off and on if inputs are added or removed on the receiver for changes to appear in HomeKit. If inputs are not visible under Power/Input Accessory, please kill and reopen Home App. 
-## Platform Accessories
-- Zone input accessories need to be removed and re-added to Homebridge if inputs are added or removed on the receiver for changes to appear in HomeKit.
-- All switches under Input and ALM accessories will be set with the default names "Zone Input" and "Zone1 ALM". This is a known iOS bug/feature. Please open each switch accessory details view and delete the accessory name. The intended name will be available as a placeholder. 
+# Configuration UI
+The custom settings page groups receiver connection details, Zone 1/Zone 2 accessories, display/volume settings, and Apple Remote pairing help. Existing configuration keys are preserved.
+
+- Use **Test connection** to read model, firmware, inputs, and available zone status using the currently entered address. It does not send power, volume, mute, input-change, or remote-key commands.
+- The preview is timestamped. Unknown values are not displayed as Off. Supported controls depend on the receiver model; SLM is a single-zone receiver.
+- Settings can be saved while the receiver is offline. Opening, editing, or testing does not persist changes; use Homebridge's **Save** button, then restart the relevant Homebridge instance or child bridge.
+- Keep Connected Standby enabled on the receiver.
+
+# Receiver state and recovery
+The plugin buffers complete TCP messages, validates responses, and reconnects after closed connections and timeouts. Existing accessories are refreshed after reconnection.
+
+HomeKit writes are serialized and state-setting commands wait for receiver feedback/read-back. Power-on also waits for basic zone status. Commands can fail if a zone remains unready beyond the confirmation deadline. Commands are not replayed automatically after a disconnect.
+
+Relative volume/listening-mode controls verify a subsequent state reply. Navigation keys and on-screen menu toggles do not have a comparable state acknowledgement; those operations confirm the socket write only. This does not prove the receiver performed the navigation action.
+
+# GitHub installation and compiled files
+The installed plugin requires the complete `dist` directory. The `prepare` build generates it during normal npm Git dependency installation, and the package allowlist includes compiled modules and custom UI files.
+
+A Git package specification has the form `github:pponce/homebridge-anthemreceiver#<branch-or-tag>`. Use it with an installer that accepts Git dependencies and installs into your existing Homebridge plugin location. Some `hb-service add` versions validate only npm names/versions rather than passing through arbitrary Git specifications. Confirm your exact working command and installed Homebridge UI version before changing workflows.
+
+The current development branch is a draft and is not yet a validated install candidate. Full build/package checks and the user's exact installation path remain release gates; see [IMPROVEMENT_PLAN.md](IMPROVEMENT_PLAN.md). No compiled output is fabricated when build dependencies are unavailable.
+
+# Compatibility notes
+- Direct listening-mode switches are supported on protocol V02 models. Older receivers retain Apple Remote listening-mode cycling; direct selection is unavailable.
+- External TV accessories still require manual pairing in Apple Home. Input changes are reconciled by stable identifiers, including standalone input switches.
+- Receiver hardware validation is pending for the current development changes, including simultaneous diagnostic/runtime connections on models that limit control sessions.

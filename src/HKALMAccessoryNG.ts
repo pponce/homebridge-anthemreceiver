@@ -1,6 +1,6 @@
-import { AnthemController} from './AnthemController';
+import type { AnthemController} from './AnthemController';
 import { HKAccessory } from './HKAccessory';
-import { AnthemReceiverHomebridgePlatform } from './platform';
+import type { AnthemReceiverHomebridgePlatform } from './platform';
 
 export class HKALMAccessoryNG extends HKAccessory {
 
@@ -26,7 +26,7 @@ export class HKALMAccessoryNG extends HKAccessory {
     for(let i = 0 ; i < ALM.length ; i ++){
       const service = this.AddService(this.platform.Service.Switch, ALM[i], ALM[i]);
 
-      service.getCharacteristic(this.platform.Characteristic.On).onSet((Value) => {
+      service.getCharacteristic(this.platform.Characteristic.On).onSet((Value) => this.platform.HandleSet(() => {
 
         if(!this.Controller.GetZonePower(this.ZoneNumber)){
           setTimeout(() => {
@@ -42,7 +42,7 @@ export class HKALMAccessoryNG extends HKAccessory {
             service.getCharacteristic(this.platform.Characteristic.On).updateValue((true));
           }, 100);
         }
-      });
+      }));
 
     }
     Controller.on('ZoneALMChange', (Zone: number, AudioMode: number) => {
@@ -73,5 +73,3 @@ export class HKALMAccessoryNG extends HKAccessory {
     });
   }
 }
-
-

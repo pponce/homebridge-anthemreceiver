@@ -1,4 +1,4 @@
-import { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, Service, Characteristic } from 'homebridge';
+import type { API, DynamicPlatformPlugin, Logger, PlatformAccessory, PlatformConfig, Service, Characteristic } from 'homebridge';
 import { HKPowerInputAccessory } from './HKPowerInputAccessory';
 import { HKMuteAccessory } from './HKMuteAccessory';
 import { HKPowerAccessory } from './HKPowerAccessory';
@@ -10,10 +10,12 @@ import { HKDolbyPostProcessingAccessory } from './HKDolbyPostProcessingAccessory
 import { HKBrightnessAccessory } from './HKBrightnessAccessory';
 import { AnthemController, AnthemControllerError } from './AnthemController';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
+import { normalizeConfig, zoneEnabled, ReceiverConfig } from './config';
+import { capabilities } from './capabilities';
 
 export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
-  public readonly Service: typeof Service = this.api.hap.Service;
-  public readonly Characteristic: typeof Characteristic = this.api.hap.Characteristic;
+  public readonly Service: typeof Service;
+  public readonly Characteristic: typeof Characteristic;
 
   public readonly accessories: PlatformAccessory[] = [];
   public CreatedAccessories: PlatformAccessory[] = [];
@@ -38,8 +40,8 @@ export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
   private Zone2DolbyPostProcessing = false;
   private PanelBrightness = false;
 
-  private Port = '14999';
-  private ReconnectTimeout = 30000;
+  private Normalized?: ReceiverConfig;
+  private LastConnectionError = '';
   private MaxVolumeDB:number|undefined = undefined;
   private InitialRun = true;
   private IsRunning = false;
@@ -52,7 +54,10 @@ export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
     public readonly api: API,
   ) {
 
+    this.Service = api.hap.Service;
+    this.Characteristic = api.hap.Characteristic;
     this.Controller = new AnthemController();
+    this.api.on('shutdown', () => this.Controller.Stop());
     this.AnthemReceiverPowerInputArray = [];
 
     this.api.on('didFinishLaunching', () => {
@@ -65,11 +70,15 @@ export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
           this.log.error('Error adding zone 1 to controller');
         }
 
-        if (this.Controller.GetConfiguredZoneNumber() > 1){ // SLM only has one zone
-          if(!this.Controller.AddControllingZone(2, this.Zone2Name, false)){
-            this.log.error('Error adding zone 2 to controller');
+        this.Controller.on('ModelDetected', model => {
+          const supported = capabilities(model);
+          if(supported.zones === 1) {
+            this.Controller.RemoveControllingZone(2);
+            if(this.Normalized && zoneEnabled(this.Normalized.Zone2)) this.log.warn('This receiver has one zone; Zone 2 controls will not be created. Saved settings are preserved.');
+          } else if(this.Normalized && zoneEnabled(this.Normalized.Zone2) && !this.Controller.GetZone(2)) {
+            this.Controller.AddControllingZone(2, this.Zone2Name, false);
           }
-        }
+        });
         // Start operation when controller is ready
         this.Controller.on('ControllerReadyForOperation', () => {
           this.DumpControllerInfo();
@@ -84,6 +93,7 @@ export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
           this.log.info('-----------------------------------------');
 
           this.IsRunning = true;
+          this.LastConnectionError = '';
 
         });
 
@@ -106,7 +116,7 @@ export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
         this.ConfigureControllerError();
 
         this.Controller.SetMaxVolumeDB(this.MaxVolumeDB);
-        this.Controller.Connect(this.config.Host, this.config.Port);
+        this.Controller.Connect(this.Normalized!.Host, this.Normalized!.Port);
       }
     });
   }
@@ -162,7 +172,7 @@ export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
       new HKARCAccessory(this, this.Controller, 1);
     }
 
-    if(this.Zone1ALM){
+    if(this.Zone1ALM && this.Controller.IsProtocolV02()){
       new HKALMAccessoryNG(this, this.Controller, 1);
     }
 
@@ -170,6 +180,7 @@ export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
       this.AddDolbyPostProcessingAccessory(1);
     }
 
+    if(this.Controller.GetZone(2)) {
     if(this.Zone2Active){
       const AnthemReceiver2 = new HKPowerInputAccessory(this, this.Controller, 2);
       this.AnthemReceiverPowerInputArray.push(AnthemReceiver2);
@@ -197,6 +208,9 @@ export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
 
     }
 
+    }
+
+    for(const accessory of this.CreatedAccessories) this.ConfigureAvailability(accessory);
     this.DeviceCacheCleanUp();
   }
 
@@ -230,92 +244,50 @@ export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
   }
 
   private CheckConfigFile():boolean{
-
-    // Do not start plugin if no host is defined in config file
-    if(this.config.Host === undefined){
-      this.log.error('Error reading Host from config file');
+    try {
+      this.Normalized = normalizeConfig(this.config, false);
+      if(!this.Normalized.Host) {
+        this.log.info('Anthem Receiver is not configured. Enter its address in plugin settings.');
+        return false;
+      }
+      const config = this.Normalized;
+      this.PanelBrightness = config.PanelBrightness;
+      this.MaxVolumeDB = config.MaxVolumeDB;
+      for(const number of [1, 2] as const) {
+        const zone = config[number === 1 ? 'Zone1' : 'Zone2'];
+        for(const key of ['Active', 'Name', 'Mute', 'Power', 'MultipleInputs', 'Volume', 'DolbyPostProcessing'] as const) {
+          (this as unknown as Record<string, unknown>)[`Zone${number}${key}`] = zone[key];
+        }
+      }
+      this.Zone1ALM = config.Zone1.ALM;
+      this.Zone1ARC = config.Zone1.ARC;
+      return true;
+    } catch(error) {
+      this.log.error('Invalid Anthem settings: ' + (error instanceof Error ? error.message : 'Unknown configuration error'));
       return false;
     }
+  }
 
-    // Warn if no port has been defined in config file, use default value
-    if(this.config.Port === undefined){
-      this.Port = this.config.Port;
-      this.log.info('Error reading Port from config file, using default value: ' + this.Port);
+  HandleSet(action: () => void): Promise<void> {
+    return this.Controller.RunCommand(action).catch(error => {
+      this.log.warn('Receiver action failed: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      this.Controller.PublishSnapshot();
+      throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+    });
+  }
+
+  ConfigureAvailability(accessory: PlatformAccessory){
+    const information = accessory.getService(this.Service.AccessoryInformation);
+    for(const service of accessory.services) {
+      if(service === information) continue;
+      for(const characteristic of service.characteristics) {
+        if(!characteristic.props.perms.includes(this.api.hap.Perms.PAIRED_READ)) continue;
+        characteristic.onGet(() => {
+          if(!this.Controller.IsReady()) throw new this.api.hap.HapStatusError(this.api.hap.HAPStatus.SERVICE_COMMUNICATION_FAILURE);
+          return characteristic.value!;
+        });
+      }
     }
-
-    if(this.config.Zone1.Active !== undefined){
-      this.Zone1Active = this.config.Zone1.Active;
-    }
-
-    if(this.config.Zone2.Active !== undefined){
-      this.Zone2Active = this.config.Zone2.Active;
-    }
-
-    if(this.config.Zone1.Name !== undefined){
-      this.Zone1Name = this.config.Zone1.Name;
-    }
-
-    if(this.config.Zone2.Name !== undefined){
-      this.Zone2Name = this.config.Zone2.Name;
-    }
-
-    if(this.config.Zone1.Mute !== undefined){
-      this.Zone1Mute = this.config.Zone1.Mute;
-    }
-
-    if(this.config.Zone2.Mute !== undefined){
-      this.Zone2Mute = this.config.Zone2.Mute;
-    }
-
-    if(this.config.Zone1.Power !== undefined){
-      this.Zone1Power = this.config.Zone1.Power;
-    }
-
-    if(this.config.Zone2.Power !== undefined){
-      this.Zone2Power = this.config.Zone2.Power;
-    }
-
-    if(this.config.Zone1.MultipleInputs !== undefined){
-      this.Zone1MultipleInputs = this.config.Zone1.MultipleInputs;
-    }
-
-    if(this.config.Zone2.MultipleInputs !== undefined){
-      this.Zone2MultipleInputs = this.config.Zone2.MultipleInputs;
-    }
-
-    if(this.config.Zone1.ALM !== undefined){
-      this.Zone1ALM = this.config.Zone1.ALM;
-    }
-
-    if(this.config.Zone1.ARC !== undefined){
-      this.Zone1ARC = this.config.Zone1.ARC;
-    }
-
-    if(this.config.Zone1.Volume !== undefined){
-      this.Zone1Volume = this.config.Zone1.Volume;
-    }
-
-    if(this.config.Zone2.Volume !== undefined){
-      this.Zone2Volume = this.config.Zone2.Volume;
-    }
-
-    if(this.config.PanelBrightness !== undefined){
-      this.PanelBrightness = this.config.PanelBrightness;
-    }
-
-    if(this.config.MaxVolumeDB !== undefined){
-      this.MaxVolumeDB = Number(this.config.MaxVolumeDB);
-    }
-
-    if(this.config.Zone1.DolbyPostProcessing !== undefined){
-      this.Zone1DolbyPostProcessing = this.config.Zone1.DolbyPostProcessing;
-    }
-
-    if(this.config.Zone2.DolbyPostProcessing !== undefined){
-      this.Zone2DolbyPostProcessing = this.config.Zone2.DolbyPostProcessing;
-    }
-
-    return true;
   }
 
   private DumpControllerInfo(){
@@ -341,34 +313,13 @@ export class AnthemReceiverHomebridgePlatform implements DynamicPlatformPlugin {
   }
 
   ConfigureControllerError(){
-
-    this.Controller.on('ControllerError', (Error, ErrorString) => {
-
-      this.log.error(Error + ': ' + ErrorString);
-
-      if(Error === AnthemControllerError.COMMAND_NOT_SUPPORTED){
-        return;
-      }
-
-      if(Error === AnthemControllerError.INVALID_MODEL_STRING_RECEIVED){
-        this.log.error('Assuming model MRX 740 for debug purpose');
-        return;
-      }
-
-      // Try to reconnect if network error
-      if(Error === AnthemControllerError.CONNECTION_ERROR){
-        if(this.IsRunning){
-          this.log.info('-----------------------------------------');
-          this.log.info('Stopping Controller Operation');
-          this.log.info('-----------------------------------------');
-        }
+    this.Controller.on('ControllerError', (error, message) => {
+      if(error === AnthemControllerError.CONNECTION_ERROR) {
+        if(!this.LastConnectionError) this.log.warn('Receiver disconnected: ' + message + '. Reconnecting automatically.');
+        else this.log.debug('Receiver reconnect attempt: ' + message);
+        this.LastConnectionError = message;
         this.IsRunning = false;
-
-        setTimeout(() => {
-          this.log.info('Trying to reconnect ....');
-          this.Controller.Connect(this.config.Host, this.config.Port);
-        }, this.ReconnectTimeout);
-      }
+      } else this.log.warn(error + ': ' + message);
     });
   }
 }

@@ -1,6 +1,6 @@
-import { PlatformAccessory, Service } from 'homebridge';
+import type { PlatformAccessory, Service } from 'homebridge';
 import { AnthemController, AnthemKeyCode } from './AnthemController';
-import { AnthemReceiverHomebridgePlatform } from './platform';
+import type { AnthemReceiverHomebridgePlatform } from './platform';
 import { PLUGIN_NAME } from './settings';
 
 export class HKPowerInputAccessory {
@@ -34,6 +34,7 @@ export class HKPowerInputAccessory {
 
   this.TVService = this.ConfigureTelevisionservice();
   this.SpeakerService = this.ConfigureTelevisionSpeakerService();
+  this.TVService.addLinkedService(this.SpeakerService);
 
   this.Controller.on('ZonePowerChange', (Zone: number, Power: boolean) => {
     if(this.ZoneNumber === Zone){
@@ -59,25 +60,31 @@ export class HKPowerInputAccessory {
     }
   });
 
+  this.platform.ConfigureAvailability(this.ReceiverAccessory);
   this.platform.api.publishExternalAccessories(PLUGIN_NAME, [this.ReceiverAccessory]);
   }
 
   SetInputs(InputArray: string[]){
-    for(let i = 0 ; i < this.HdmiInputService.length ; i++){
-      this.TVService.removeLinkedService(this.HdmiInputService[i]);
-      this.ReceiverAccessory.removeService(this.HdmiInputService[i]);
-    }
-
-    for (let i = 0; i < InputArray.length ; i++){
-      const hdmiInputService = this.ReceiverAccessory.addService(this.platform.Service.InputSource, 'hdmi'+(i+1), 'HDMI '+ (i+1));
-      hdmiInputService
-        .setCharacteristic(this.platform.Characteristic.Identifier, (i+1))
-        .setCharacteristic(this.platform.Characteristic.ConfiguredName, InputArray[i])
+    const next: Service[] = [];
+    for(let i = 0; i < InputArray.length; i++) {
+      const subtype = 'HDMI ' + (i + 1);
+      const input = this.ReceiverAccessory.getServiceById(this.platform.Service.InputSource, subtype)
+        || this.ReceiverAccessory.addService(this.platform.Service.InputSource, 'hdmi' + (i + 1), subtype);
+      input.setCharacteristic(this.platform.Characteristic.Identifier, i + 1)
+        .setCharacteristic(this.platform.Characteristic.ConfiguredName, InputArray[i] || 'Input ' + (i + 1))
         .setCharacteristic(this.platform.Characteristic.IsConfigured, this.platform.Characteristic.IsConfigured.CONFIGURED)
         .setCharacteristic(this.platform.Characteristic.InputSourceType, this.platform.Characteristic.InputSourceType.HDMI);
-      this.TVService.addLinkedService(hdmiInputService);
-      this.HdmiInputService.push(hdmiInputService);
+      this.TVService.addLinkedService(input);
+      next.push(input);
     }
+    for(const input of this.HdmiInputService) {
+      if(!next.includes(input)) {
+        this.TVService.removeLinkedService(input);
+        this.ReceiverAccessory.removeService(input);
+      }
+    }
+    this.HdmiInputService = next;
+    this.platform.ConfigureAvailability(this.ReceiverAccessory);
   }
 
   ConfigureTelevisionservice():Service{
@@ -89,19 +96,19 @@ export class HKPowerInputAccessory {
 
     // Send change from homekit to Anthem Receiver - Power
     TVService.getCharacteristic(this.platform.Characteristic.Active)
-      .onSet((newValue) => {
+      .onSet((newValue) => this.platform.HandleSet(() => {
         this.Controller.PowerZone(this.ZoneNumber, newValue === 1);
-      });
+      }));
 
     // Send change from homekit to Anthem Receiver - Active input
     TVService.getCharacteristic(this.platform.Characteristic.ActiveIdentifier)
-      .onSet((newValue) => {
+      .onSet((newValue) => this.platform.HandleSet(() => {
         this.Controller.SetZoneInput(this.ZoneNumber, Number(newValue));
-      });
+      }));
 
     TVService
       .getCharacteristic(this.platform.Characteristic.RemoteKey)
-      .onSet(async (newValue) => {
+      .onSet((newValue) => this.platform.HandleSet(() => {
         if(!this.Controller.GetZones()[this.ZoneNumber].GetIsPowered()){
           this.Controller.PowerZone(this.ZoneNumber, true);
           return;
@@ -166,7 +173,7 @@ export class HKPowerInputAccessory {
             break;
           }
         }
-      });
+      }));
 
     // Set initial power status
     TVService.getCharacteristic(this.platform.Characteristic.Active).updateValue(this.Controller.GetZonePower(this.ZoneNumber));
@@ -183,13 +190,13 @@ export class HKPowerInputAccessory {
       this.platform.Characteristic.VolumeControlType.ABSOLUTE);
 
     SpeakerService.getCharacteristic(this.platform.Characteristic.Mute)
-      .onSet(this.HandleMuteSet.bind(this));
+      .onSet(value => this.platform.HandleSet(() => this.HandleMuteSet(value)));
 
     SpeakerService.getCharacteristic(this.platform.Characteristic.Volume)
-      .onSet(this.HandleVolumeSet.bind(this));
+      .onSet(value => this.platform.HandleSet(() => this.HandleVolumeSet(value)));
 
     SpeakerService.getCharacteristic(this.platform.Characteristic.VolumeSelector)
-      .onSet(this.HandleVolumeSelector.bind(this));
+      .onSet(value => this.platform.HandleSet(() => this.HandleVolumeSelector(value)));
 
     return SpeakerService;
   }

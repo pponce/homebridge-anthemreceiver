@@ -1,75 +1,48 @@
-import { AnthemController} from './AnthemController';
+import type { AnthemController } from './AnthemController';
 import { HKAccessory } from './HKAccessory';
-import { AnthemReceiverHomebridgePlatform } from './platform';
-
+import type { AnthemReceiverHomebridgePlatform } from './platform';
 
 export class HKInputAccessoryNG extends HKAccessory {
+  private Inputs: string[] = [];
 
-  constructor(
-    protected readonly platform: AnthemReceiverHomebridgePlatform,
-    protected readonly Controller: AnthemController,
-    private readonly ZoneNumber: number,
-  ){
-    super(platform,
-      Controller,
-      'Zone' + ZoneNumber + ' Inputs',
-      Controller.SerialNumber + ZoneNumber + 'Input Selector NG');
-    this.platform.log.info('Zone' + ZoneNumber + ': Input Selector');
+  constructor(protected readonly platform: AnthemReceiverHomebridgePlatform,
+    protected readonly Controller: AnthemController, private readonly ZoneNumber: number) {
+    super(platform, Controller, 'Zone' + ZoneNumber + ' Inputs', Controller.SerialNumber + ZoneNumber + 'Input Selector NG');
+    this.SetInputs(Controller.GetInputs());
+    Controller.on('InputChange', inputs => this.SetInputs(inputs));
+    Controller.on('ZoneInputChange', (zone, input) => { if(zone === this.ZoneNumber) this.Update(input); });
+    Controller.on('ZonePowerChange', (zone, powered) => {
+      if(zone === this.ZoneNumber) this.Update(powered ? Controller.GetZone(zone).GetActiveInput() : 0);
+    });
+  }
 
-    // set accessory information
-    this.Accessory.getService(this.platform.Service.AccessoryInformation)!
-      .setCharacteristic(this.platform.Characteristic.Model, Controller.ReceiverModel + ' Input Accessory')
-      .setCharacteristic(this.platform.Characteristic.SerialNumber, Controller.SerialNumber + ' Inputs');
-
-    // Create service list
-    const Inputs = Controller.GetInputs();
-    for(let i = 0 ; i < Inputs.length ; i++){
-      const service = this.AddService(this.platform.Service.Switch, 'Input' + (i+1) + ' ' + Inputs[i], 'Input' + i);
-      service.getCharacteristic(this.platform.Characteristic.On).onSet((Value) => {
-
-        if(!this.Controller.GetZonePower(this.ZoneNumber)){
-          setTimeout(() => {
-            service.getCharacteristic(this.platform.Characteristic.On).updateValue((false));
-          }, 100);
-          return;
-        }
-
-        if(Value){
-          this.Controller.SetZoneInput(this.ZoneNumber, (i+1));
-        } else{
-          setTimeout(() => {
-            service.getCharacteristic(this.platform.Characteristic.On).updateValue((true));
-          }, 100);
-        }
-      });
+  private Update(active: number){
+    for(let i = 0; i < this.Inputs.length; i++) {
+      this.Accessory.getServiceById(this.platform.Service.Switch, 'Input' + i)
+        ?.updateCharacteristic(this.platform.Characteristic.On, this.Controller.GetZonePower(this.ZoneNumber) && i + 1 === active);
     }
+  }
 
-    this.Controller.on('ZoneInputChange', (Zone: number, Input: number) => {
-      if(this.ZoneNumber === Zone){
-
-        // Update all switch
-        for(let i = 0 ; i < Inputs.length ; i++){
-          const Index = i + 1;
-          const service = this.Accessory.getServiceById(this.platform.Service.Switch, 'Input'+i);
-          if(service !== undefined){
-            service.getCharacteristic(this.platform.Characteristic.On).updateValue((Index === Input));
-          }
-        }
+  SetInputs(inputs: string[]){
+    const services = new Set();
+    for(let i = 0; i < inputs.length; i++) {
+      const name = 'Input' + (i + 1) + ' ' + inputs[i];
+      const service = this.AddService(this.platform.Service.Switch, name, 'Input' + i);
+      services.add(service);
+      service.setCharacteristic(this.platform.Characteristic.Name, name);
+      service.getCharacteristic(this.platform.Characteristic.On).onSet(value => this.platform.HandleSet(() => {
+        if(!this.Controller.GetZonePower(this.ZoneNumber)) throw new Error('Zone is powered off');
+        if(!value) throw new Error('Choose another input to change the active input');
+        this.Controller.SetZoneInput(this.ZoneNumber, i + 1);
+      }));
+    }
+    for(const service of [...this.Accessory.services]) {
+      if(service.UUID === this.platform.Service.Switch.UUID && /^Input[0-9]+$/.test(service.subtype || '') && !services.has(service)) {
+        this.Accessory.removeService(service);
       }
-    });
-
-    // Handle ZonePowerChange event from controller
-    this.Controller.on('ZonePowerChange', (Zone: number, Power:boolean) => {
-      if(this.ZoneNumber === Zone){
-        for(let i = 0 ; i < Inputs.length ; i++){
-          const service = this.Accessory.getServiceById(this.platform.Service.Switch, 'Input'+i);
-          if(service !== undefined){
-            if(!Power){
-              service.getCharacteristic(this.platform.Characteristic.On).updateValue((false));
-            }
-          }
-        }
-      }
-    });
+    }
+    this.Inputs = [...inputs];
+    this.Update(this.Controller.GetZone(this.ZoneNumber).GetActiveInput());
+    this.platform.ConfigureAvailability(this.Accessory);
   }
 }

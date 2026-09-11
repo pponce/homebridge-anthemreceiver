@@ -1,6 +1,6 @@
-import { AnthemController} from './AnthemController';
+import type { AnthemController} from './AnthemController';
 import { HKAccessory } from './HKAccessory';
-import { AnthemReceiverHomebridgePlatform } from './platform';
+import type { AnthemReceiverHomebridgePlatform } from './platform';
 
 export class HKDolbyPostProcessingAccessory extends HKAccessory {
 
@@ -31,7 +31,7 @@ export class HKDolbyPostProcessingAccessory extends HKAccessory {
     for(let i = 0 ; i < DPP.length ; i ++){
       const service = this.AddService(this.platform.Service.Switch, DPP[i], DPP[i]);
 
-      service.getCharacteristic(this.platform.Characteristic.On).onSet((Value) => {
+      service.getCharacteristic(this.platform.Characteristic.On).onSet((Value) => this.platform.HandleSet(() => {
 
         if(!this.Controller.GetZonePower(this.ZoneNumber)){
           setTimeout(() => {
@@ -47,7 +47,7 @@ export class HKDolbyPostProcessingAccessory extends HKAccessory {
             service.getCharacteristic(this.platform.Characteristic.On).updateValue((true));
           }, 100);
         }
-      });
+      }));
 
     }
     Controller.on('ZoneDolbyPostProcessingChange', (Zone: number, DolbyAudioMode: number) => {
@@ -78,5 +78,3 @@ export class HKDolbyPostProcessingAccessory extends HKAccessory {
     });
   }
 }
-
-

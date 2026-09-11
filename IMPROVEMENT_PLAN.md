@@ -252,15 +252,50 @@ No npm publication is required to use a GitHub branch/tag once that installation
 
 ## 8. Implementation progress
 
-### 2026-09-11 — Implementation started
+### 2026-09-11 — Implementation uploaded in draft PR #10
 
-- [x] Rechecked master after Dependabot PR #9 merged.
-- [x] Added this plan to the repository for ongoing progress tracking.
-- [ ] Build/CI and install checks.
-- [ ] Protocol/configuration/zone fixes.
-- [ ] Connection and command reliability.
-- [ ] Custom configuration UI.
-- [ ] Input reconciliation.
-- [ ] Hardware and exact hb-service installation validation.
+Branch: `improvements/reliability-and-config-ui`  
+PR: https://github.com/pponce/homebridge-anthemreceiver/pull/10
 
-Environment: npm dependency installation currently returns HTTP 403. Full TypeScript and dependency-backed integration checks must run in GitHub CI or a network-enabled checkout; local source-level tests will be reported separately. No dependency lockfile will be fabricated.
+| Area | Implementation status | Verification status |
+| --- | --- | --- |
+| Dependabot | Merged previously in PR #9 | Config checked on master. |
+| R1 protocol parsing | Buffered UTF-8 framing, bounded responses, numeric validation, multi-digit ARC/Dolby parsing implemented | Local fragmentation/malformed-field/protocol-family tests pass. |
+| R2 configuration and zones | Shared normalization, numeric port default, safe missing sections, model-driven Zone 2, SLM restriction implemented | Local configuration and platform tests pass. |
+| R3 connection lifecycle | Owned socket/timers, close/end/error handling, capped backoff, fresh handshake, snapshot refresh, shutdown implemented | Local real-TCP fake-receiver reconnect tests pass; hardware outage/stability checks pending. |
+| R4 commands and state | Bounded serial queue, read-back confirmation, power-on readiness, offline errors, no replay after disconnect implemented | Local confirmation, rejection, timeout, no-replay, and offline-accessory tests pass. Hardware boot latency remains to validate. |
+| R5 input services | Stable TV input reconciliation, tracked-array replacement, standalone input reconciliation implemented | Repeated refresh/rename/shrink tests preserve service objects and listener counts. |
+| R6 model support | Capability map and unsupported-model rejection implemented; unsupported older-model direct ALM selection no longer appears functional | Capability/protocol-family tests pass. Older-model listening-mode cycling remains available; hardware verification pending. |
+| Custom settings UI | Grouped cards, responsive styling, shared server validation, native Save flow, metadata preservation, model-aware options, read-only status preview implemented | Model/diagnostic tests and JS syntax checks pass. Four browser tests added but NOT executed successfully: Chromium is absent. Visual QA pending. |
+| CI/package | Node 22/24 × Homebridge 1/2 workflow, type/syntax checks, tests, browser checks, package allowlist, archive install smoke test implemented | Full TypeScript/dependency-backed execution is blocked locally by npm HTTP 403. No GitHub workflow runs reported as of the last check. |
+| Dependency lockfile | Pending | Must be generated from a successful dependency install and reviewed; it was not fabricated. CI temporarily uses npm install. |
+| dist/Git install | prepare build retained; full dist and homebridge-ui explicitly included in packaging | No verified dist was generated or committed locally. Clean Git install and exact hb-service command remain pending. |
+| Hardware/release | Not performed | PR remains draft; do not treat it as a stable install candidate. |
+
+### Validation performed
+
+- 21 regression tests passed using Node 24 source transformation, real loopback TCP fake receivers, and mocked Homebridge/HAP objects where applicable.
+- The temporary source loader only enabled local testing without npm dependencies. These results do not establish TypeScript type-checking, compiled-package compatibility, or real Homebridge integration.
+- All authored JavaScript passed `node --check`; changed TypeScript was parsed through Node's transform support for source-level execution.
+- `git diff --check` passed.
+- The browser suite stopped at launch because no Chromium executable is installed. No browser or visual pass is claimed.
+- `npm install` failed with HTTP 403 from the registry. Consequently build, package-archive execution, and lockfile generation have not passed here.
+
+### Deliberate implementation details and remaining limits
+
+- Existing configuration property names, explicit false/zero values, and unrelated Homebridge metadata are retained. The UI does not require a successful live test to save valid settings.
+- Core typed event-emitter dependency was replaced by Node's built-in EventEmitter. The new UI server uses @homebridge/plugin-ui-utils.
+- The obsolete ESLint setup was replaced with TypeScript checking plus JavaScript syntax checks for the current lint command. Formatting cleanup was not mixed into the receiver changes.
+- State setters confirm exact values where replies permit; relative controls confirm read-back. Navigation/menu operations without protocol acknowledgements only confirm the socket write. Their physical effect remains unconfirmed.
+- Power-on polls status within the command deadline and does not replay the power command. Slow real hardware may require tuning after measurement.
+- Connection preview uses a separate bounded, read-only socket. Its command list is tested as query-only, but interaction with models that limit simultaneous sessions is a hardware release gate. Cross-process runtime socket sharing is not implemented.
+- The repository is a fork and currently reports zero workflow runs. Check its Actions page and enable workflows if GitHub prompts for fork activation. Repository Actions activation was not changed through these tools.
+- Runtime engines still retain the existing advertised ranges. CI coverage added here targets Node 22 and 24; validating or narrowing the other advertised versions remains pending before release.
+
+### Next gates
+
+1. Run the GitHub workflow or use a checkout with npm access: install dependencies, generate/review the lockfile, run type checks and compiled tests, then validate the archive.
+2. Install Chromium in the test environment and run the four browser tests; inspect light/dark and mobile/desktop layouts before marking the UI verified.
+3. Validate a clean Git installation using the user's exact hb-service/Homebridge UI/npm setup. Decide whether that path needs a prebuilt branch/tag and verify generated dist if so.
+4. Test the user's receiver, including standby, boot timing, network interruption, Apple Remote, and preserved HomeKit pairings. Record model/firmware and any unsupported scenarios.
+5. Only after the required checks pass, mark the PR ready for merge and select a release version. No stable release, npm publish, or live installation has been performed.
