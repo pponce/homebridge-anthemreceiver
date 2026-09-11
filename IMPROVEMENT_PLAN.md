@@ -267,7 +267,7 @@ PR: https://github.com/pponce/homebridge-anthemreceiver/pull/10
 | R5 input services | Stable TV input reconciliation, tracked-array replacement, standalone input reconciliation implemented | Repeated refresh/rename/shrink tests preserve service objects and listener counts. |
 | R6 model support | Capability map and unsupported-model rejection implemented; unsupported older-model direct ALM selection no longer appears functional | Capability/protocol-family tests pass. Older-model listening-mode cycling remains available; hardware verification pending. |
 | Custom settings UI | Grouped cards, responsive styling, shared server validation, native Save flow, metadata preservation, model-aware options, read-only status preview implemented | Model/diagnostic tests and JS syntax checks pass. Four browser tests added but NOT executed successfully: Chromium is absent. Visual QA pending. |
-| CI/package | Node 22/24 × Homebridge 1/2 workflow, type/syntax checks, tests, browser checks, package allowlist, archive install smoke test implemented | Full TypeScript/dependency-backed execution is blocked locally by npm HTTP 403. No GitHub workflow runs reported as of the last check. |
+| CI/package | Node 22/24 × Homebridge 1/2 workflow, type/syntax checks, tests, browser checks, package allowlist, archive install smoke test implemented | Full TypeScript/dependency-backed execution is blocked locally by npm HTTP 403. Workflows enabled by the repository owner; a follow-up commit triggers the first CI run. Results pending. |
 | Dependency lockfile | Pending | Must be generated from a successful dependency install and reviewed; it was not fabricated. CI temporarily uses npm install. |
 | dist/Git install | prepare build retained; full dist and homebridge-ui explicitly included in packaging | No verified dist was generated or committed locally. Clean Git install and exact hb-service command remain pending. |
 | Hardware/release | Not performed | PR remains draft; do not treat it as a stable install candidate. |
@@ -289,7 +289,7 @@ PR: https://github.com/pponce/homebridge-anthemreceiver/pull/10
 - State setters confirm exact values where replies permit; relative controls confirm read-back. Navigation/menu operations without protocol acknowledgements only confirm the socket write. Their physical effect remains unconfirmed.
 - Power-on polls status within the command deadline and does not replay the power command. Slow real hardware may require tuning after measurement.
 - Connection preview uses a separate bounded, read-only socket. Its command list is tested as query-only, but interaction with models that limit simultaneous sessions is a hardware release gate. Cross-process runtime socket sharing is not implemented.
-- The repository is a fork and currently reports zero workflow runs. Check its Actions page and enable workflows if GitHub prompts for fork activation. Repository Actions activation was not changed through these tools.
+- The repository owner enabled Actions on 2026-09-11. No earlier runs were replayed, so this progress update triggers a fresh branch build. CI results remain pending.
 - Runtime engines still retain the existing advertised ranges. CI coverage added here targets Node 22 and 24; validating or narrowing the other advertised versions remains pending before release.
 
 ### Next gates
@@ -299,3 +299,10 @@ PR: https://github.com/pponce/homebridge-anthemreceiver/pull/10
 3. Validate a clean Git installation using the user's exact hb-service/Homebridge UI/npm setup. Decide whether that path needs a prebuilt branch/tag and verify generated dist if so.
 4. Test the user's receiver, including standby, boot timing, network interruption, Apple Remote, and preserved HomeKit pairings. Record model/firmware and any unsupported scenarios.
 5. Only after the required checks pass, mark the PR ready for merge and select a release version. No stable release, npm publish, or live installation has been performed.
+
+### 2026-09-11 — Actions activated
+
+- The repository owner confirmed enabling workflows.
+- Verified that PR #10 remained mergeable and that no workflow runs or checks had started for the previous commit.
+- Pushed this plan update to trigger the build, compiled tests, browser tests, and package checks.
+- Keep the PR draft until CI and the remaining installation/hardware gates are satisfied.
