@@ -1,5 +1,5 @@
 .anthem-settings, .anthem-settings * { box-sizing:border-box; }
-.anthem-settings { max-width:960px; margin:auto; padding:.25rem; color:var(--bs-body-color,inherit); font:inherit; }
+.anthem-settings { max-width:960px; margin:auto; padding:.25rem; color:inherit; font:inherit; }
 .anthem-intro { border-left:4px solid #d99130; padding:.4rem 1.2rem; margin-bottom:1.5rem; }
 .anthem-eyebrow { font-size:.72rem; font-weight:700; letter-spacing:.13em; }
 .anthem-intro h2 { margin:.45rem 0; font-size:1.7rem; }
@@ -31,3 +31,60 @@
 .anthem-settings :focus-visible { outline:2px solid #d99130; outline-offset:3px; }
 .anthem-field .unsupported { font-weight:400; opacity:.8; }
 @media(max-width:560px) { .anthem-grid { grid-template-columns:1fr; } .anthem-card { padding:.8rem; } .anthem-intro h2 { font-size:1.4rem; } }
+
+/* Homebridge forwards its selected theme classes to the custom-UI iframe.
+   Do not use prefers-color-scheme: the user's Homebridge theme takes priority.
+   Bootstrap's --bs-body-color can retain its light-theme value in night mode. */
+:is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings {
+  color: #f1f1f1;
+  color-scheme: dark;
+  --bs-border-color: #858585;
+}
+:is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings :is(.anthem-card) {
+  background-color: #2b2b2b;
+  border-color: #858585;
+}
+:is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings :is(h2, h3, label, summary, table, th, td) { color: inherit; }
+:is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings :is(small, caption, .anthem-help, .anthem-footer) {
+  color: #d3d3d3;
+  opacity: 1;
+}
+:is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings :is(.form-control, .form-select, textarea) {
+  color: #f1f1f1;
+  background-color: #333333;
+  border-color: #858585;
+}
+:is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings :is(.form-control, textarea)::placeholder {
+  color: #bdbdbd !important;
+  opacity: 1 !important;
+}
+:is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings :is(.form-control, .form-select):is(:disabled, [readonly]) {
+  color: #d3d3d3;
+  background-color: #2b2b2b;
+  opacity: 1;
+}
+:is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings .form-select {
+  --bs-form-select-bg-img: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23f1f1f1' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+}
+:is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings input[type=checkbox] { accent-color: #e9ae57; }
+:is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings :is(.btn-outline-primary, .btn-outline-secondary) {
+  color: #f1f1f1;
+  border-color: #949494;
+  background-color: transparent;
+}
+:is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings :is(.btn-outline-primary, .btn-outline-secondary):is(:hover, :focus-visible) {
+  color: #ffffff;
+  background-color: #414141;
+}
+:is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings .btn-outline-danger { color: #ffb4ab; border-color: #ffb4ab; }
+:is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings .btn-outline-danger:is(:hover, :focus-visible) { color: #ffffff; background-color: #6e2727; }
+:is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings .btn-primary {
+  color: #171717 !important;
+  background-color: #e9ae57 !important;
+  border-color: #e9ae57 !important;
+}
+:is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings .btn-primary:is(:hover, :focus-visible) { background-color: #f2c17b !important; }
+:is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings .alert { color: #f1f1f1; background-color: #333333; }
+:is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings :is(a:not(.btn), code) { color: #9dccff; }
+:is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings :is([aria-invalid=true], .is-invalid) { border-color: #ffb4ab; }
+:is(body.dark-mode, body[class*="config-ui-x-dark-mode"]) .anthem-settings :focus-visible { outline: 2px solid #f2c17b; outline-offset: 3px; }

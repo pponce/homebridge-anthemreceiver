@@ -358,3 +358,10 @@ sudo hb-service start
 This returns to master; it does not promise to restore an unknown exact previously installed commit or saved configuration. The backup protects the prior Homebridge configuration and pairing state. Keep existing accessories and configuration during initial testing.
 
 After successful installation, inspect `sudo hb-service view`, then open plugin settings. Test normal power, mute, low-level volume adjustment, and input selection before testing standby/reconnect and the read-only connection preview. Record firmware, model reported in logs/preview, actual installation output, and any boot timeout. Hardware validation and final merge remain pending.
+
+### 2026-09-11 — Night theme contrast repair
+
+- Owner reported unreadable night-mode text in Anthem, Script2, and RPC3Control custom settings. All three roots used `--bs-body-color`, which can retain the light Bootstrap text color when Homebridge applies its dark theme classes.
+- Roots now inherit the host text color; scoped night-theme styles give text, fields, placeholders, disabled fields, captions, buttons, and borders explicit contrasting colors. The selector uses Homebridge's forwarded `dark-mode`/`config-ui-x-dark-mode-*` classes, with no OS-theme override.
+- Added browser regression coverage using representative Bootstrap/Homebridge iframe styles inserted after plugin CSS, measuring 4.5:1 text and 3:1 field-border contrast. Covers day/night switching with opposite OS preferences and night-mode mobile overflow. CI results are the validation record.
+- Updated the existing Anthem draft PR. Separate focused PRs carry the same fix to Script2 and RPC3Control. Receiver behavior and configuration format are unchanged.

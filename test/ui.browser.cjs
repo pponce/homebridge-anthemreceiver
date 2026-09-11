@@ -89,3 +89,11 @@ test('connection preview applies model capabilities without deleting saved choic
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth), false);
   if (process.env.ANTHEM_UI_SCREENSHOT) await page.screenshot({ path: process.env.ANTHEM_UI_SCREENSHOT, fullPage: true });
 });
+
+test('Homebridge night and light themes keep settings and form controls readable', async t => {
+  const page = await pageFor(t, [{ platform: 'AnthemReceiver', Host: 'receiver', Zone2: { Active: true } }]);
+  await page.waitForFunction(() => saveEnabled);
+  await page.getByRole('button', { name: 'Test connection', exact: true }).click();
+  await page.waitForFunction(() => document.getElementById('field-Zone2-Active').disabled);
+  await require('./theme-fixture.cjs').checkThemeContrast(page, '.anthem-settings');
+});
