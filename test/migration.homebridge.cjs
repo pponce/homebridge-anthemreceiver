@@ -54,8 +54,9 @@ async function runHomebridge(t, fixture, storage, port) {
     '-U', storage, '-P', fixture, '--strict-plugin-resolution', '-I', '-Q'],
   { cwd: root, env: { ...process.env, NO_COLOR: '1' }, stdio: ['ignore', 'pipe', 'pipe'] });
   let logs = '';
-  child.stdout.on('data', chunk => { logs += chunk; });
-  child.stderr.on('data', chunk => { logs += chunk; });
+  const capture = chunk => { logs += chunk.toString().replace(/\u001b\[[0-9;]*m/g, ''); };
+  child.stdout.on('data', capture);
+  child.stderr.on('data', capture);
   let stopped = false;
   const stop = async () => {
     if (stopped) return;
@@ -68,6 +69,7 @@ async function runHomebridge(t, fixture, storage, port) {
   };
   t.after(stop);
   const deadline = Date.now() + 25000;
+  let probeError = 'HTTP probe not reached';
   while (Date.now() < deadline) {
     if (child.exitCode !== null || child.signalCode !== null) throw new Error('Homebridge exited during migration fixture startup');
     const externalPorts = [...logs.matchAll(/Migration Zone ([12]) is running on port (\d+)/g)];
@@ -79,13 +81,13 @@ async function runHomebridge(t, fixture, storage, port) {
           for (const match of externalPorts) external[match[1]] = identities(await accessories(Number(match[2])));
           return { main: identities(main), external, stop, logs: () => logs };
         }
-      } catch { /* The HTTP listener can trail the controller-ready event. */ }
+      } catch (error) { probeError = error.message; }
     }
     await pause(100);
   }
   // Exclude setup codes and arbitrary receiver/configuration values from diagnostics.
-  const diagnostic = logs.split('\n').filter(line => /ERROR|Error|failed|Cannot|No plugin|Could not/.test(line)).join('\n');
-  throw new Error('Migration fixture did not become ready. ' + diagnostic);
+  const diagnostic = logs.split('\n').filter(line => /ERROR|Error|failed|Cannot|No plugin|Could not|is running on port/.test(line)).join(' | ');
+  throw new Error(`Migration fixture not ready: controller=${logs.includes('Starting Controller Operation')}; probe=${probeError}; ${diagnostic}`);
 }
 
 function installFixture(parent, name) {
