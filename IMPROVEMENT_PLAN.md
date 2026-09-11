@@ -1,16 +1,18 @@
 # Homebridge Anthem Receiver — Reliability and Configuration UI Plan
 
 Date: 2026-09-11  
-Status: Owner reports successful MRX 540 8K PR testing and requests merge preparation. Documentation updated on `improvements/reliability-and-config-ui`; merge and npm release have not been performed.
+Status: Predecessor PRs #10 and #11 are merged. Preparing the independent homebridge-anthemreceiver-plus 1.0.0-beta.1 candidate on release/anthemreceiver-plus. Standalone repository creation, npm publication, actual Plus migration, and verification submission have not yet occurred.
 
 ## Current status
 
-- Core reliability and configuration UI changes are implemented. Build, browser/theme, package, and direct GitHub-install CI checks passed before this documentation update.
-- On 2026-09-11, the owner reported that PR testing looked good on the previously identified MRX 540 8K setup and requested merge guidance. Individual scenarios, firmware, Zone 2, other models, and extended outage testing were not separately reported; do not mark those as individually verified.
-- The README now describes iPhone pairing without an iOS-version-specific heading, explains the existing maximum-volume mapping through the Home app experience, and highlights the new UI and reliability improvements.
-- Resolved standalone input recreation advice was removed. Physical boot delay, input refresh triggers, the unverified Home app switch-name workaround, protocol limitations, and model-specific diagnostic testing remain documented.
-- Remaining follow-up work includes a reviewed dependency lockfile, engine-range validation beyond the CI matrix, and broader hardware coverage. The owner has requested proceeding with merge; these follow-ups do not imply a new approval requirement.
-- Historical progress entries below describe the state at their recorded point in the implementation. They do not override this current status.
+- Source baseline: 341c167b3f95809f6e40a2b11a13ea40879fecd0, including the merged reliability/UI work and ALM None support.
+- Owner chose a standalone pponce/homebridge-anthemreceiver-plus repository with inherited Git history and the old repository retained.
+- Package/plugin identity changes to homebridge-anthemreceiver-plus; platform alias AnthemReceiver and existing accessory/service identity rules remain unchanged.
+- A real-Homebridge restart test now exercises rename reassociation, HAP AIDs/IIDs, and synthetic pairing-record preservation. CI results must distinguish simulation from real Apple Home migration.
+- Direct GitHub installation of the initial renamed candidate passed CI. Full migration validation is in progress; use the latest staging-branch CI result as the gate.
+- SUCCESSOR_SETUP.md, MIGRATION.md, ACKNOWLEDGEMENTS.md, and VERIFICATION_PREPARATION.md cover the handoff, compatibility rationale, upstream credit, and later publication/verification steps.
+- No package has been published or installed on the owner's host by this preparation. The GitHub connector cannot create repositories, so the owner runs the standalone-creation script from a new local checkout.
+- Historical progress below records earlier implementation states, not current blockers or current merge status. A dependency lockfile and broader hardware/child-bridge coverage remain follow-up work.
 
 ## 1. Goal and scope
 
@@ -382,3 +384,11 @@ After successful installation, inspect `sudo hb-service view`, then open plugin 
 - Compared the known issues on master against current code. Standalone inputs now reconcile without accessory removal. Power-on readiness is handled, but hardware boot time remains. Input lists still need a receiver refresh trigger; no instant discovery is claimed. Home app switch naming was not confirmed fixed, so its workaround is retained.
 - Removed stale blanket statements that no hardware testing had occurred; recorded owner-reported testing without inventing individual test results.
 - This follow-up changes README.md and IMPROVEMENT_PLAN.md only. No runtime, package version, release, or installed receiver configuration is changed.
+
+### 2026-09-11 — Independent Plus successor preparation
+
+- Confirmed merged PR #10 and ALM None PR #11 before selecting the source baseline.
+- Renamed package metadata and plugin registration, updated schema/UI links and branding, retained the platform identity, and removed the inherited verified badge.
+- Limited advertised Node support to the tested 22/24 matrix; retained Homebridge 1.8/2 support. No receiver protocol or service identity implementation was changed for the rename.
+- Added setup and beta-publication scripts for the owner to run with their GitHub/npm credentials. Repository creation keeps the prior repository and local directory intact; publication is a separate explicit step.
+- Verification rationale cites open upstream issues factually and does not claim knowledge of the upstream author's intentions. No issue, message, or verification request was sent.

@@ -1,7 +1,10 @@
-# homebridge-anthemreceiver
+# homebridge-anthemreceiver-plus
 
-[![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
-[![npm downloads](https://badgen.net/npm/dt/homebridge-anthemreceiver)](https://www.npmjs.com/package/homebridge-anthemreceiver)
+
+
+**Independent successor maintained by Pedro Ponce de Leon.** This project retains the `AnthemReceiver` platform name and existing accessory identifiers to support migration from `homebridge-anthemreceiver`. It is not yet verified by Homebridge. See [migration guidance](MIGRATION.md) before replacing an existing installation, and [project origins](ACKNOWLEDGEMENTS.md) for upstream credit.
+
+**Release status:** `1.0.0-beta.1` is the first Plus migration candidate. npm publication is a separate step; the prepared version number does not mean it has been published.
 
 Control your Anthem receiver from Apple Home and the Apple TV Remote on your iPhone. Choose the controls you want for each supported zone, including power, volume, mute, and input selection.
 
@@ -33,14 +36,14 @@ Supported receiver families:
 
 The owner has reported successful testing of these changes on an **MRX 540 8K**. This is not a claim of hardware testing across every supported model.
 
-Homebridge 1.8 and 2.x are supported. Automated checks cover Node.js 22 and 24 with Homebridge 1 and 2; see [package.json](package.json) for the declared engine ranges.
+Homebridge 1.8 and 2.x on Node.js 22 or 24 are supported. Automated checks cover those combinations; see [package.json](package.json) for the declared engine ranges. The original plugin's broader, untested Node engine ranges are not carried into this new package.
 
 ![Anthem controls in Apple Home](AR6.jpg)
 
 ## Getting started
 
 1. Install Homebridge and Homebridge UI.
-2. Install the plugin. For the published npm version, use `sudo hb-service add homebridge-anthemreceiver`. For this repository's changes, use the [GitHub installation instructions](#installing-or-updating-from-github).
+2. For a new installation, use the [GitHub installation instructions](#installing-or-updating-from-github). Once the beta is published, it can also be installed with `sudo hb-service add homebridge-anthemreceiver-plus@beta`. Existing users must follow [MIGRATION.md](MIGRATION.md) to replace the old package without resetting their setup.
 3. Enable **Connected Standby** on the receiver. On supported models, this is in the receiver's web UI under **System Setup → General → General Settings**.
 4. Open the plugin's settings in Homebridge UI, enter the receiver address, and enable the accessories you want.
 5. Optionally set **Maximum volume (dB)** to match your receiver's maximum volume setting.
@@ -145,19 +148,21 @@ The receiver communication and accessory handling have been updated to make ever
 
 Commands are not automatically replayed after a disconnect, avoiding repeated toggles or volume steps. Relative volume/listening-mode controls verify a subsequent state reply. Navigation and menu keys can only confirm that the command was written to the connection; the protocol does not provide equivalent confirmation of their effect.
 
+For contributor setup, beta publication, and verification, see [SUCCESSOR_SETUP.md](SUCCESSOR_SETUP.md).
+
 See [CHANGELOG.md](CHANGELOG.md) for the change summary and [IMPROVEMENT_PLAN.md](IMPROVEMENT_PLAN.md) for validation history and remaining follow-up work.
 
 ## Installing or updating from GitHub
 
-For installations using the **Homebridge APT package's `hb-service` wrapper**, install this repository's default branch with:
+For a **new installation** using the Homebridge APT package's `hb-service` wrapper, install this repository's default branch with the commands below. If the original package is already installed, use [MIGRATION.md](MIGRATION.md) instead; adding Plus alongside it is not the migration procedure.
 
 ```bash
 sudo hb-service stop &&
-sudo hb-service add 'pponce/homebridge-anthemreceiver#master' &&
+sudo hb-service add 'pponce/homebridge-anthemreceiver-plus#main' &&
 sudo hb-service start
 ```
 
-To test an unmerged change or select an exact revision, replace `master` with its branch name, tag, or commit SHA. Changes in a PR become available on `master` only after that PR is merged. A GitHub merge does not update the npm package automatically.
+To test an unmerged change or select an exact revision, replace `main` with its branch name, tag, or commit SHA. Changes in a PR become available on `main` only after that PR is merged. A GitHub merge does not update the npm package automatically.
 
 The installed plugin needs compiled files in `dist`. With npm lifecycle scripts enabled, the `prepare` build generates them during GitHub installation; the custom UI files are included too. You do not need to build or copy `dist` manually for this tested path.
 

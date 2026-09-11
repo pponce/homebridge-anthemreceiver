@@ -1,8 +1,10 @@
 # Changelog
 
-## Unreleased — draft reliability and configuration UI work
+## 1.0.0-beta.1 — Plus migration candidate (not yet published)
 
 - Add a confirmed Audio Listening Mode **None** switch on protocol V02 models, preserving existing ALM accessory and service identifiers (upstream issue #19). Keep all mode switches off while the zone is off and restore actual mode state after switch-off requests.
+- Introduce the independent `homebridge-anthemreceiver-plus` package and maintainership; preserve `AnthemReceiver`, accessory UUID rules, service types, and subtypes for migration.
+- Add a real-Homebridge restart migration regression covering cache reassociation and HAP identifiers, plus standalone repository setup and beta publication instructions.
 - Buffer and validate TCP replies, including fragmented UTF-8 input names and multi-digit ARC/Dolby responses.
 - Normalize configuration and correctly register supported zones; preserve SLM's single-zone behavior.
 - Reconnect after clean close/end/error/timeout with owned timers and refresh existing accessories after initialization.

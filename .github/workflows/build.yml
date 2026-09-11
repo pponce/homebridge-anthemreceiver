@@ -20,7 +20,12 @@ jobs:
       - run: npm install --no-save --ignore-scripts 'homebridge@${{ matrix.homebridge }}'
       - run: npm run lint
       - run: npm test
-      - run: npm run test:migration
+      - name: Verify Homebridge package migration
+        id: migration
+        run: npm run test:migration
+      - name: "Migration result: ${{ steps.migration.outputs.diagnostic || 'completed' }}"
+        if: always() && steps.migration.outcome == 'failure'
+        run: echo 'See migration test output and annotations for details.'
       - run: npm run check:package
       - run: npx playwright install --with-deps chromium
       - run: npm run test:ui
