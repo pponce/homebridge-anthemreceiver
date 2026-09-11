@@ -1,101 +1,165 @@
 # homebridge-anthemreceiver
+
 [![verified-by-homebridge](https://badgen.net/badge/homebridge/verified/purple)](https://github.com/homebridge/homebridge/wiki/Verified-Plugins)
 [![npm downloads](https://badgen.net/npm/dt/homebridge-anthemreceiver)](https://www.npmjs.com/package/homebridge-anthemreceiver)
 
-Homebridge plugin for Anthem receivers.
-- Zone 1 and Zone 2 Power/Input accessories (External accessories to be manually added in Home App)
-- Zone 1 and Zone 2 Power, Volume, Mute, Input and Dolby Audio Processing accessories
-- Zone 1 ARC and Audio Listening Mode accessories
-- Front Panel Brightness Accessory
+Control your Anthem receiver from Apple Home and the Apple TV Remote on your iPhone. Choose the controls you want for each supported zone, including power, volume, mute, and input selection.
 
-## Compatibility
-- Homebridge: v1.8+ and v2.x
-- Node.js: v20+
+## Highlights
 
-![Screenshot](AR6.jpg)
+- **A volume slider that fits your listening range.** Set **Maximum volume (dB)** to match the limit on your receiver. The Home app's full slider then spans your usable range, with 100% representing your chosen maximum. [See how volume control works](#volume-control-in-apple-home).
+- **Modern settings with readable day and night themes.** Grouped connection, zone, and display settings make setup easier, with inline validation and Homebridge's familiar Save button.
+- **A read-only connection preview.** Check the receiver's model, firmware, inputs, and available zone status without changing playback or volume.
+- **More reliable everyday control.** Improved reply handling, automatic reconnection, and state refresh help HomeKit stay in sync. Supported commands wait for receiver confirmation and report communication failures.
+- **Stable accessory and input handling.** Corrected Zone 2 setup and input updates preserve existing accessory identities and reuse unchanged input services.
 
-# Supported models
-- AVM 60,  AVM 70,  AVM 90 
-- MRX 310, MRX 510, MRX 710 
-- MRX 520, MRX 720, MRX 1120 
+## Controls and supported models
+
+Available controls depend on the model and enabled zones:
+
+- Zone 1 and Zone 2 combined **Power/Input** accessories, paired separately in Apple Home for Apple TV Remote access.
+- Separate zone controls for **Power, Volume, Mute, Input, and Dolby Audio Processing**.
+- Zone 1 **ARC** and **Audio Listening Mode** controls.
+- **Front Panel Brightness** control.
+
+Supported receiver families:
+
+- AVM 60, AVM 70, AVM 90
+- MRX 310, MRX 510, MRX 710
+- MRX 520, MRX 720, MRX 1120
 - MRX 540, MRX 740, MRX 1140
-- MRX SLM
+- MRX SLM (single zone)
 
-# Getting started
-- Install Homebridge and Homebridge UI
-- Install homebridge-anthemreceiver plugin
-  - From npm (recommended): `sudo hb-service add homebridge-anthemreceiver`
-  - For a GitHub branch, see the GitHub installation notes below; accepted `hb-service add` syntax depends on your Homebridge UI version.
-- Enable Connected Standby option on Anthem Receiver (Web UI: System Setup -> General -> General Settings)
-- Configure the plugin using the Homebridge UI
-- Restart the Homebridge server
-- ARC, Power, Volume, Mute, Input, Panel Brightness and Audio Listening Mode accessories will be added automatically if enabled. 
-- Power/Input accessories are to be manually added in Home App. This step is needed for Apple Remote to be present in Control Center. See procedure below.
+The owner has reported successful testing of these changes on an **MRX 540 8K**. This is not a claim of hardware testing across every supported model.
 
+Homebridge 1.8 and 2.x are supported. Automated checks cover Node.js 22 and 24 with Homebridge 1 and 2; see [package.json](package.json) for the declared engine ranges.
 
-# Adding External Power/Input accessory in Home App
-## iOS 16
-- Enable "Power/Input" accessory in Homebridge UI config page. Restart Homebridge after any modifications
-- Open Home App
-- Select "+" on the upper-right corner of the screen and select "Add Accessory"
-- Select "More options"
-- Select "Zone1" or "Zone2" Power/Input Television accessory
-- Follow further on-screen instructions to complete configuration
+![Anthem controls in Apple Home](AR6.jpg)
 
-# Apple Remote in Control Center
-* Device UP and DOWN physical volume buttons to change volume
-* UP and DOWN to change volume
-* PLAY AND PAUSE to toggle mute
-* LEFT, RIGHT to select input (Main Zone)
-* BACK button to switch current audio mode (Main Zone)
-* INFO button to show and hide menu display (Main Zone)
-* CENTER button to select option (Main Zone)
+## Getting started
 
+1. Install Homebridge and Homebridge UI.
+2. Install the plugin. For the published npm version, use `sudo hb-service add homebridge-anthemreceiver`. For this repository's changes, use the [GitHub installation instructions](#installing-or-updating-from-github).
+3. Enable **Connected Standby** on the receiver. On supported models, this is in the receiver's web UI under **System Setup → General → General Settings**.
+4. Open the plugin's settings in Homebridge UI, enter the receiver address, and enable the accessories you want.
+5. Optionally set **Maximum volume (dB)** to match your receiver's maximum volume setting.
+6. Save and restart the relevant Homebridge instance or child bridge.
 
-# Volume mapping (Maximum volume in dB)
-- New optional config field: **Maximum volume (dB)**
-- Set this to the same maximum volume dB configured on your Anthem receiver (for example `-10`).
-- When set:
-  - HomeKit volume `0%` sends **Mute**
-  - HomeKit volume `1% - 100%` maps linearly to `-89.5 dB` through your configured **Maximum volume (dB)** in `0.5 dB` steps
-- When **not** set:
-  - The plugin keeps the legacy/default behavior and uses the receiver percentage command (`PVOL`) directly
+Enabled standalone controls appear through Homebridge. Combined **Power/Input** accessories require the separate pairing step below.
 
-Example in `config.json`:
+## Adding the Power/Input accessory on an iPhone
+
+Pair each enabled zone's Power/Input accessory once to make it available in Apple Home and the Apple TV Remote in Control Center.
+
+1. Enable **Power/Input** for the zone in the plugin settings, save, and restart Homebridge.
+2. Open the **Home** app on your iPhone.
+3. Tap **+ → Add Accessory → More Options**.
+4. Select the zone's Power/Input television accessory, such as **Zone1** or **Zone2**.
+5. Follow the pairing prompts, using the Homebridge pairing code when requested.
+
+Wording and placement can vary by iOS version. Repeat for a second enabled zone. Existing paired accessories do not need to be removed and added again for a normal plugin update.
+
+## Apple TV Remote in Control Center
+
+Open the **Apple TV Remote** in your iPhone's Control Center and select the paired zone accessory. Available controls depend on the receiver model and the buttons shown by iOS.
+
+| Control | Receiver action |
+| --- | --- |
+| iPhone's physical volume buttons | Adjust volume while using the receiver remote |
+| Up / Down | Adjust volume |
+| Play / Pause | Toggle mute |
+| Left / Right | Select input in the main zone |
+| Back | Cycle listening mode in the main zone |
+| Info | Show or hide the main-zone menu |
+| Center | Select a main-zone menu option |
+
+## Volume control in Apple Home
+
+Enable the zone's **Volume** accessory to get a slider in the Home app. HomeKit exposes this separate control as a lightbulb-style accessory: its brightness slider adjusts receiver volume, and its on/off control unmutes or mutes a powered-on zone. Use the zone's power control to turn the receiver on first.
+
+### Make the full slider useful
+
+If you limit your Anthem to a maximum such as **−10 dB**, set the plugin's **Maximum volume (dB)** to the same value. The slider then spreads volume adjustments across that listening range. **100% means your chosen −10 dB maximum**, making the top of the slider meaningful instead of leaving part of its travel above the receiver's allowed range.
+
+The mapping also applies to volume feedback, so a change made on the receiver is reflected on the same scale in HomeKit. This setting applies to the plugin's percentage-based volume controls; it does not rescale the relative up/down buttons on the remote.
+
+With a maximum of **−10 dB**, the slider behaves like this:
+
+| Home app slider | Receiver setting |
+| --- | --- |
+| 0% | Mute |
+| 1% | −89.5 dB |
+| 50% | Approximately −50 dB |
+| 100% | −10 dB |
+
+Values from 1–100% map linearly in dB, rounded to the receiver's 0.5 dB steps. A percentage is a position within your configured range, not a percentage of perceived loudness. Moving above 0% sends an unmute command as well as the requested volume.
+
+**Set the maximum on the receiver itself, then enter the same value in the plugin.** The plugin setting controls slider mapping; it does not change the Anthem's own maximum-volume setting or limit other remotes. One plugin value is shared by both zones, so check your zone limits if you use Zone 2.
+
+Leave **Maximum volume (dB)** blank to retain the receiver's native percentage control (`PVOL`). In JSON, the setting is named `MaxVolumeDB`; for example, this configuration enables the Zone 1 volume accessory:
+
 ```json
 {
   "platform": "AnthemReceiver",
   "Host": "192.168.1.50",
   "Port": 14999,
-  "MaxVolumeDB": -10
+  "MaxVolumeDB": -10,
+  "Zone1": {
+    "Volume": true
+  }
 }
 ```
 
-> Note: In Homebridge JSON config, the property key is `MaxVolumeDB`. In the Homebridge UI label it appears as **Maximum volume (dB)**.
+## Configuration UI
 
-# Configuration UI
-The custom settings page groups receiver connection details, Zone 1/Zone 2 accessories, display/volume settings, and Apple Remote pairing help. Existing configuration keys are preserved.
+The custom settings page groups receiver connection details, Zone 1/Zone 2 accessories, display and volume settings, and iPhone pairing help. Day and night themes include contrasting text, fields, help text, buttons, and borders.
 
-- Use **Test connection** to read model, firmware, inputs, and available zone status using the currently entered address. It does not send power, volume, mute, input-change, or remote-key commands.
-- The preview is timestamped. Unknown values are not displayed as Off. Supported controls depend on the receiver model; SLM is a single-zone receiver.
-- Settings can be saved while the receiver is offline. Opening, editing, or testing does not persist changes; use Homebridge's **Save** button, then restart the relevant Homebridge instance or child bridge.
-- Keep Connected Standby enabled on the receiver.
+- **Test connection** reads model, firmware, inputs, and available zone status using the address currently entered. It does not send power, volume, mute, input-change, or remote-key commands.
+- The preview is timestamped. Missing status is shown as unknown rather than Off, and model-specific options account for restrictions such as the SLM's single zone.
+- You can save valid settings while the receiver is offline. Opening, editing, or testing settings does not save them automatically: use Homebridge's **Save** button, then restart the relevant instance or child bridge.
+- Existing configuration keys and Homebridge metadata are preserved.
 
-# Receiver state and recovery
-The plugin buffers complete TCP messages, validates responses, and reconnects after closed connections and timeouts. Existing accessories are refreshed after reconnection.
+## Reliability and stability improvements
 
-HomeKit writes are serialized and state-setting commands wait for receiver feedback/read-back. Power-on also waits for basic zone status. Commands can fail if a zone remains unready beyond the confirmation deadline. Commands are not replayed automatically after a disconnect.
+The receiver communication and accessory handling have been updated to make everyday use more dependable:
 
-Relative volume/listening-mode controls verify a subsequent state reply. Navigation keys and on-screen menu toggles do not have a comparable state acknowledgement; those operations confirm the socket write only. This does not prove the receiver performed the navigation action.
+| Improvement | What it means in use |
+| --- | --- |
+| Complete TCP reply buffering | Replies split across network packets are reassembled, so partial messages no longer silently lose state updates. |
+| Response validation | Malformed receiver data is rejected, and ARC/Dolby feedback works for multi-digit input numbers. |
+| Connection recovery and cleanup | Closed connections, errors, and timeouts trigger controlled retries. Old sockets and timers are cleaned up, and a fresh handshake refreshes existing accessories. |
+| Confirmed state changes | HomeKit requests are processed in order and supported state changes wait for feedback or a read-back. Power-on waits for basic zone readiness; offline or unconfirmed operations report failure. |
+| Correct zone and configuration handling | Missing optional configuration sections and the default port are handled consistently. Zone 2 registers on compatible receivers, while SLM remains single-zone. |
+| Stable input updates | Refreshed input lists update using stable identifiers, reusing unchanged services and removing stale ones. Standalone input accessories no longer need to be removed and re-added to pick up the refreshed list. |
+| Automated regression checks | CI covers receiver simulations, configuration, command handling, browser themes, package contents, and direct GitHub installation. |
 
-# GitHub installation and compiled files
-The installed plugin requires the complete `dist` directory. The `prepare` build generates it during normal npm Git dependency installation, and the package allowlist includes compiled modules and custom UI files.
+Commands are not automatically replayed after a disconnect, avoiding repeated toggles or volume steps. Relative volume/listening-mode controls verify a subsequent state reply. Navigation and menu keys can only confirm that the command was written to the connection; the protocol does not provide equivalent confirmation of their effect.
 
-A Git package specification has the form `github:pponce/homebridge-anthemreceiver#<branch-or-tag>`. Use it with an installer that accepts Git dependencies and installs into your existing Homebridge plugin location. The Homebridge APT package wrapper passes GitHub specifications through to npm, so it accepts `sudo hb-service add pponce/homebridge-anthemreceiver#<branch-or-commit>`. The separate Homebridge UI helper can validate only npm names/versions. Identify which helper is in use before changing workflows. [APT wrapper source](https://github.com/homebridge/homebridge-apt-pkg/blob/latest/deb/opt/homebridge/hb-service-shim)
+See [CHANGELOG.md](CHANGELOG.md) for the change summary and [IMPROVEMENT_PLAN.md](IMPROVEMENT_PLAN.md) for validation history and remaining follow-up work.
 
-The current development branch remains draft. Full build, compiled tests, browser tests, and production archive installation have passed CI. CI also checks a clean npm GitHub install of the exact commit with lifecycle scripts enabled. The APT wrapper installation path has been identified; actual installation on the user's host and receiver hardware behavior remain to be verified; see [IMPROVEMENT_PLAN.md](IMPROVEMENT_PLAN.md).
+## Installing or updating from GitHub
 
-# Compatibility notes
-- Direct listening-mode switches are supported on protocol V02 models. Older receivers retain Apple Remote listening-mode cycling; direct selection is unavailable.
-- External TV accessories still require manual pairing in Apple Home. Input changes are reconciled by stable identifiers, including standalone input switches.
-- Receiver hardware validation is pending for the current development changes, including simultaneous diagnostic/runtime connections on models that limit control sessions.
+For installations using the **Homebridge APT package's `hb-service` wrapper**, install this repository's default branch with:
+
+```bash
+sudo hb-service stop &&
+sudo hb-service add 'pponce/homebridge-anthemreceiver#master' &&
+sudo hb-service start
+```
+
+To test an unmerged change or select an exact revision, replace `master` with its branch name, tag, or commit SHA. Changes in a PR become available on `master` only after that PR is merged. A GitHub merge does not update the npm package automatically.
+
+The installed plugin needs compiled files in `dist`. With npm lifecycle scripts enabled, the `prepare` build generates them during GitHub installation; the custom UI files are included too. You do not need to build or copy `dist` manually for this tested path.
+
+The `&&` sequence starts Homebridge only after a successful installation. If installation fails, Homebridge stays stopped; inspect the error before retrying or reinstalling your previous revision.
+
+These commands are for the APT wrapper, which passes GitHub package specifications to npm. Other `hb-service` implementations may accept only npm package names and versions; use the installer appropriate to your existing Homebridge setup. [APT wrapper source](https://github.com/homebridge/homebridge-apt-pkg/blob/latest/deb/opt/homebridge/hb-service-shim)
+
+## Compatibility and troubleshooting
+
+- **Startup readiness:** a receiver can still take a few seconds to become ready after power-on. The plugin now waits for basic zone status within a bounded deadline and reports a timeout if readiness is not confirmed; it cannot eliminate hardware boot time.
+- **Refreshing inputs:** input lists are read during initialization/reconnection and zone power-on. After editing inputs on the receiver, restart the relevant Homebridge instance or child bridge, or power-cycle the zone, to trigger a refresh. Updated lists are reconciled without removing accessories. If the Home app still shows an old list, close and reopen it.
+- **Switch names in Apple Home:** if Input or Audio Listening Mode switches show a generic zone name, open each switch's details and clear the custom name so Home can use the supplied default. The previously reported Home app naming behavior has not been verified as fixed by this PR.
+- **Listening modes:** direct listening-mode switches require a protocol V02 model. Older receivers retain Apple Remote listening-mode cycling.
+- **Standby connectivity:** keep Connected Standby enabled so the receiver can remain reachable when powered off.
+- **Connection preview:** this uses a separate read-only connection. Behavior on models that limit simultaneous control connections needs model-specific testing.

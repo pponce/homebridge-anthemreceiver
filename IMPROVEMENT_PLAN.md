@@ -1,7 +1,16 @@
 # Homebridge Anthem Receiver — Reliability and Configuration UI Plan
 
 Date: 2026-09-11  
-Status: Implementation in progress on `improvements/reliability-and-config-ui`. See the progress log below.
+Status: Owner reports successful MRX 540 8K PR testing and requests merge preparation. Documentation updated on `improvements/reliability-and-config-ui`; merge and npm release have not been performed.
+
+## Current status
+
+- Core reliability and configuration UI changes are implemented. Build, browser/theme, package, and direct GitHub-install CI checks passed before this documentation update.
+- On 2026-09-11, the owner reported that PR testing looked good on the previously identified MRX 540 8K setup and requested merge guidance. Individual scenarios, firmware, Zone 2, other models, and extended outage testing were not separately reported; do not mark those as individually verified.
+- The README now describes iPhone pairing without an iOS-version-specific heading, explains the existing maximum-volume mapping through the Home app experience, and highlights the new UI and reliability improvements.
+- Resolved standalone input recreation advice was removed. Physical boot delay, input refresh triggers, the unverified Home app switch-name workaround, protocol limitations, and model-specific diagnostic testing remain documented.
+- Remaining follow-up work includes a reviewed dependency lockfile, engine-range validation beyond the CI matrix, and broader hardware coverage. The owner has requested proceeding with merge; these follow-ups do not imply a new approval requirement.
+- Historical progress entries below describe the state at their recorded point in the implementation. They do not override this current status.
 
 ## 1. Goal and scope
 
@@ -365,3 +374,11 @@ After successful installation, inspect `sudo hb-service view`, then open plugin 
 - Roots now inherit the host text color; scoped night-theme styles give text, fields, placeholders, disabled fields, captions, buttons, and borders explicit contrasting colors. The selector uses Homebridge's forwarded `dark-mode`/`config-ui-x-dark-mode-*` classes, with no OS-theme override.
 - Added browser regression coverage using representative Bootstrap/Homebridge iframe styles inserted after plugin CSS, measuring 4.5:1 text and 3:1 field-border contrast. Covers day/night switching with opposite OS preferences and night-mode mobile overflow. CI results are the validation record.
 - Updated the existing Anthem draft PR. Separate focused PRs carry the same fix to Script2 and RPC3Control. Receiver behavior and configuration format are unchanged.
+
+### 2026-09-11 — Owner testing accepted; README and known-issue review
+
+- Owner: “Testing looked good for the PR” and requested steps to merge PR #10.
+- Reworked the README around setup and everyday Apple Home use, with a volume example checked against the controller's mapping: 1% = -89.5 dB, 50% ≈ -50 dB, and 100% = -10 dB when MaxVolumeDB is -10; 0% mutes. This mapping predates PR #10 and is highlighted as an existing feature, not claimed as newly implemented here.
+- Compared the known issues on master against current code. Standalone inputs now reconcile without accessory removal. Power-on readiness is handled, but hardware boot time remains. Input lists still need a receiver refresh trigger; no instant discovery is claimed. Home app switch naming was not confirmed fixed, so its workaround is retained.
+- Removed stale blanket statements that no hardware testing had occurred; recorded owner-reported testing without inventing individual test results.
+- This follow-up changes README.md and IMPROVEMENT_PLAN.md only. No runtime, package version, release, or installed receiver configuration is changed.
