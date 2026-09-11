@@ -72,7 +72,8 @@ async function runHomebridge(t, fixture, storage, port) {
   let probeError = 'HTTP probe not reached';
   while (Date.now() < deadline) {
     if (child.exitCode !== null || child.signalCode !== null) throw new Error('Homebridge exited during migration fixture startup');
-    const externalPorts = [...logs.matchAll(/Migration Zone ([12]) is running on port (\d+)/g)];
+    // HAP can append a four-character identity suffix to external display names.
+    const externalPorts = [...logs.matchAll(/Migration Zone ([12])(?: [0-9A-Fa-f]{4})? is running on port (\d+)/g)];
     if (logs.includes('Starting Controller Operation') && externalPorts.length === 2) {
       try {
         const main = await accessories(port);
