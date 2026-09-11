@@ -18,6 +18,8 @@ Homebridge 1.8.5 and 2.0.0 source include a cache-restoration path that looks up
 
 The Plus integration test starts actual Homebridge with a legacy-name fixture and then Plus using the same storage and configuration. It compares bridged and external accessory AIDs/IIDs, cache ownership, and synthetic controller pairing records. The legacy fixture uses the same compiled implementation with only its package/plugin name changed, isolating the rename from older functional differences. This is not an end-to-end Apple Home migration test, and it does not prove migration from every upstream release or a separately created child bridge.
 
+The automated test passed on all four Node 22/24 × Homebridge 1/2 combinations in [CI run 34620834574](https://github.com/pponce/homebridge-anthemreceiver/actions/runs/34620834574). This confirms the tested host-level rename mechanism, not real Apple Home scene preservation.
+
 ## Before touching the running installation
 
 1. Finish standalone repository creation and wait for the new repository's CI checks, including `test:migration`, to pass.

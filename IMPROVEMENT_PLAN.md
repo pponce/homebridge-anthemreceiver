@@ -9,7 +9,7 @@ Status: Predecessor PRs #10 and #11 are merged. Preparing the independent homebr
 - Owner chose a standalone pponce/homebridge-anthemreceiver-plus repository with inherited Git history and the old repository retained.
 - Package/plugin identity changes to homebridge-anthemreceiver-plus; platform alias AnthemReceiver and existing accessory/service identity rules remain unchanged.
 - A real-Homebridge restart test now exercises rename reassociation, HAP AIDs/IIDs, and synthetic pairing-record preservation. CI results must distinguish simulation from real Apple Home migration.
-- Direct GitHub installation of the initial renamed candidate passed CI. Full migration validation is in progress; use the latest staging-branch CI result as the gate.
+- All five CI jobs passed at successor commit 702549caacddaa4d7f9e930e8eb2f519b4ab96fe: Node 22/24 × Homebridge 1/2, real-Homebridge migration, browser/theme checks, archive installation, and direct GitHub installation. [Run 34620834574](https://github.com/pponce/homebridge-anthemreceiver/actions/runs/34620834574). Real Apple Home migration remains unperformed.
 - SUCCESSOR_SETUP.md, MIGRATION.md, ACKNOWLEDGEMENTS.md, and VERIFICATION_PREPARATION.md cover the handoff, compatibility rationale, upstream credit, and later publication/verification steps.
 - No package has been published or installed on the owner's host by this preparation. The GitHub connector cannot create repositories, so the owner runs the standalone-creation script from a new local checkout.
 - Historical progress below records earlier implementation states, not current blockers or current merge status. A dependency lockfile and broader hardware/child-bridge coverage remain follow-up work.
@@ -392,3 +392,11 @@ After successful installation, inspect `sudo hb-service view`, then open plugin 
 - Limited advertised Node support to the tested 22/24 matrix; retained Homebridge 1.8/2 support. No receiver protocol or service identity implementation was changed for the rename.
 - Added setup and beta-publication scripts for the owner to run with their GitHub/npm credentials. Repository creation keeps the prior repository and local directory intact; publication is a separate explicit step.
 - Verification rationale cites open upstream issues factually and does not claim knowledge of the upstream author's intentions. No issue, message, or verification request was sent.
+
+### 2026-09-11 — Plus migration regression passed
+
+- [CI run 34620834574](https://github.com/pponce/homebridge-anthemreceiver/actions/runs/34620834574) passed all five jobs at 702549caacddaa4d7f9e930e8eb2f519b4ab96fe.
+- Actual Homebridge 1/2 processes restored cached accessories under the new plugin identifier while retaining the same configuration, bridged/external AIDs and IIDs, signing identities, and synthetic controller pairing records.
+- The initial fixture failure was its log matcher not accounting for HAP's four-character external accessory name suffix. The fixture was corrected; runtime accessory names/UUIDs were not changed.
+- Browser/theme and production/archive/GitHub install checks also passed. Test coverage remains a host-level simulation; live MRX 540 8K scene/automation and child-bridge migration still require owner testing.
+- The final handoff records these results, preserves upstream LICENSE content and mode, and gives the standalone setup and beta publication scripts executable modes. No new runtime changes accompany that documentation update.

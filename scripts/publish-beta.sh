@@ -17,6 +17,9 @@ case "$(git remote get-url origin)" in
   *) echo 'Origin is not the standalone Plus repository.' >&2; exit 1 ;;
 esac
 gh auth status --hostname github.com
+[[ "$(npm config get registry)" == 'https://registry.npmjs.org/' ]] || {
+  echo 'Use the public npm registry for this publication; inspect your npm registry setting.' >&2; exit 1;
+}
 npm whoami
 head_sha="$(git rev-parse HEAD)"
 remote_sha="$(gh api "repos/$target_repo/commits/main" --jq .sha)"

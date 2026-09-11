@@ -2,6 +2,10 @@
 
 This project is prepared from predecessor commit `341c167b3f95809f6e40a2b11a13ea40879fecd0`, after merging PR #10 (reliability/UI/docs) and PR #11 (ALM None). It retains that Git ancestry. Its staging branch is `release/anthemreceiver-plus` in the old repository; that branch is a handoff source, not a PR to merge back into the old package's master branch.
 
+## Preparation validation
+
+[CI run 34620834574](https://github.com/pponce/homebridge-anthemreceiver/actions/runs/34620834574) passed all five jobs at commit 702549caacddaa4d7f9e930e8eb2f519b4ab96fe, including the real-Homebridge migration regression across Node 22/24 and Homebridge 1/2, browser/theme checks, production archive installation and direct GitHub installation. The final handoff commit adds this record and script safeguards; use the final commit supplied in the setup commands. Actual Apple Home scenes/automations and the owner's child-bridge path have not yet been migration-tested.
+
 ## 1. Create the new local checkout and standalone GitHub repository
 
 Run the supplied checkout commands on the computer where you keep development repositories, not inside the running Homebridge plugin directory. The proposed path is `~/devProjects/homebridge-anthemreceiver-plus`; the previous checkout is retained.
