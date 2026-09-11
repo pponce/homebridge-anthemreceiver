@@ -2,6 +2,7 @@
 
 ## Unreleased — draft reliability and configuration UI work
 
+- Add a confirmed Audio Listening Mode **None** switch on protocol V02 models, preserving existing ALM accessory and service identifiers (upstream issue #19). Keep all mode switches off while the zone is off and restore actual mode state after switch-off requests.
 - Buffer and validate TCP replies, including fragmented UTF-8 input names and multi-digit ARC/Dolby responses.
 - Normalize configuration and correctly register supported zones; preserve SLM's single-zone behavior.
 - Reconnect after clean close/end/error/timeout with owned timers and refresh existing accessories after initialization.

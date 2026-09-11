@@ -80,3 +80,11 @@ test('timeout and receiver rejection propagate to caller', async () => {
   await new Promise(resolve => setImmediate(resolve));
   queue.receive('!EZ1POW1'); await rejected;
 });
+
+test('None selection fails when the receiver does not confirm mode zero', async t => {
+  const { controller, receiver } = await ready(t, { ignore: command => command === 'Z1ALM0' });
+  await controller.RunCommand(() => controller.PowerZone(1, true));
+  await assert.rejects(controller.RunCommand(() => controller.SetAudioListeningMode(1, 0)), /confirm/);
+  assert.equal(receiver.states.Z1ALM, 1);
+  assert.equal(controller.GetZone(1).GetALM(), 1);
+});

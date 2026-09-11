@@ -1,4 +1,4 @@
-import type { AnthemController} from './AnthemController';
+import { AnthemAudioListeningMode, type AnthemController } from './AnthemController';
 import { HKAccessory } from './HKAccessory';
 import type { AnthemReceiverHomebridgePlatform } from './platform';
 
@@ -21,28 +21,33 @@ export class HKALMAccessoryNG extends HKAccessory {
       .setCharacteristic(this.platform.Characteristic.SerialNumber, Controller.SerialNumber + ' ALM');
 
     // Create service list
-    const ALM = this.Controller.GetALMArray();
+    // Append None without changing existing service subtypes or mode numbers.
+    const ALM = [
+      ...this.Controller.GetALMArray().map((name, index) => ({ name, mode: index + 1 })),
+      { name: 'None', mode: AnthemAudioListeningMode.NONE },
+    ];
 
     for(let i = 0 ; i < ALM.length ; i ++){
-      const service = this.AddService(this.platform.Service.Switch, ALM[i], ALM[i]);
+      const { name, mode } = ALM[i];
+      const service = this.AddService(this.platform.Service.Switch, name, name);
 
-      service.getCharacteristic(this.platform.Characteristic.On).onSet((Value) => this.platform.HandleSet(() => {
-
-        if(!this.Controller.GetZonePower(this.ZoneNumber)){
+      service.getCharacteristic(this.platform.Characteristic.On).onSet((Value) => {
+        // These switches select a mode. Restore confirmed state after an Off request.
+        if(!Value){
           setTimeout(() => {
-            service.getCharacteristic(this.platform.Characteristic.On).updateValue((false));
+            service.getCharacteristic(this.platform.Characteristic.On).updateValue(
+              this.Controller.GetZonePower(this.ZoneNumber) && this.Controller.GetZone(this.ZoneNumber)?.GetALM() === mode);
           }, 100);
           return;
         }
 
-        if(Value){
-          this.Controller.SetAudioListeningMode(this.ZoneNumber, i+1);
-        } else{
-          setTimeout(() => {
-            service.getCharacteristic(this.platform.Characteristic.On).updateValue((true));
-          }, 100);
-        }
-      }));
+        return this.platform.HandleSet(() => {
+          if(!this.Controller.GetZonePower(this.ZoneNumber)){
+            throw new Error('Turn the zone on before selecting a listening mode');
+          }
+          this.Controller.SetAudioListeningMode(this.ZoneNumber, mode);
+        });
+      });
 
     }
     Controller.on('ZoneALMChange', (Zone: number, AudioMode: number) => {
@@ -50,9 +55,10 @@ export class HKALMAccessoryNG extends HKAccessory {
 
         // Update all switch
         for(let i = 0 ; i < ALM.length ; i++){
-          const service = this.Accessory.getServiceById(this.platform.Service.Switch, ALM[i]);
+          const service = this.Accessory.getServiceById(this.platform.Service.Switch, ALM[i].name);
           if(service !== undefined){
-            service.getCharacteristic(this.platform.Characteristic.On).updateValue(((i+1) === AudioMode));
+            service.getCharacteristic(this.platform.Characteristic.On).updateValue(
+              this.Controller.GetZonePower(this.ZoneNumber) && ALM[i].mode === AudioMode);
           }
         }
       }
@@ -62,7 +68,7 @@ export class HKALMAccessoryNG extends HKAccessory {
     this.Controller.on('ZonePowerChange', (Zone: number, Power:boolean) => {
       if(this.ZoneNumber === Zone){
         for(let i = 0 ; i < ALM.length ; i++){
-          const service = this.Accessory.getServiceById(this.platform.Service.Switch, ALM[i]);
+          const service = this.Accessory.getServiceById(this.platform.Service.Switch, ALM[i].name);
           if(service !== undefined){
             if(!Power){
               service.getCharacteristic(this.platform.Characteristic.On).updateValue((false));

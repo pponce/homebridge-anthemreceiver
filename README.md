@@ -12,6 +12,7 @@ Control your Anthem receiver from Apple Home and the Apple TV Remote on your iPh
 - **A read-only connection preview.** Check the receiver's model, firmware, inputs, and available zone status without changing playback or volume.
 - **More reliable everyday control.** Improved reply handling, automatic reconnection, and state refresh help HomeKit stay in sync. Supported commands wait for receiver confirmation and report communication failures.
 - **Stable accessory and input handling.** Corrected Zone 2 setup and input updates preserve existing accessory identities and reuse unchanged input services.
+- **Select “None” for listening mode.** A dedicated **None** switch lets supported receivers return to listening mode None from Apple Home or a scene, while preserving existing listening-mode switch identifiers.
 
 ## Controls and supported models
 
@@ -19,7 +20,7 @@ Available controls depend on the model and enabled zones:
 
 - Zone 1 and Zone 2 combined **Power/Input** accessories, paired separately in Apple Home for Apple TV Remote access.
 - Separate zone controls for **Power, Volume, Mute, Input, and Dolby Audio Processing**.
-- Zone 1 **ARC** and **Audio Listening Mode** controls.
+- Zone 1 **ARC** and **Audio Listening Mode** controls, including a dedicated **None** listening-mode switch on protocol V02 models.
 - **Front Panel Brightness** control.
 
 Supported receiver families:
@@ -72,6 +73,14 @@ Open the **Apple TV Remote** in your iPhone's Control Center and select the pair
 | Back | Cycle listening mode in the main zone |
 | Info | Show or hide the main-zone menu |
 | Center | Select a main-zone menu option |
+
+## Audio Listening Mode in Apple Home
+
+Enable Zone 1 **Audio Listening Mode** in the plugin settings to expose the mode switches on a protocol V02 receiver. With the zone powered on, turn **None** on to select the receiver's None listening mode. The plugin waits for receiver confirmation and updates the other mode switches from receiver feedback. None selects a listening mode; it does not mute the receiver or change ARC.
+
+The switches act as a mode selector: turn the mode you want on. Turning the selected switch off restores its confirmed state; to leave None, turn another mode on. All mode switches show Off when the zone is powered off.
+
+The None switch is added to the existing ALM accessory after updating and restarting Homebridge. Existing accessory and switch identifiers are preserved, so existing scenes and automations do not need to be recreated. Add None to any scene where you want to select it explicitly.
 
 ## Volume control in Apple Home
 
@@ -131,6 +140,7 @@ The receiver communication and accessory handling have been updated to make ever
 | Confirmed state changes | HomeKit requests are processed in order and supported state changes wait for feedback or a read-back. Power-on waits for basic zone readiness; offline or unconfirmed operations report failure. |
 | Correct zone and configuration handling | Missing optional configuration sections and the default port are handled consistently. Zone 2 registers on compatible receivers, while SLM remains single-zone. |
 | Stable input updates | Refreshed input lists update using stable identifiers, reusing unchanged services and removing stale ones. Standalone input accessories no longer need to be removed and re-added to pick up the refreshed list. |
+| Listening-mode None selection | A dedicated None switch resolves the missing selection described in [upstream issue #19](https://github.com/EHylands/homebridge-anthemreceiver/issues/19), using receiver confirmation and preserving existing ALM switch identities. |
 | Automated regression checks | CI covers receiver simulations, configuration, command handling, browser themes, package contents, and direct GitHub installation. |
 
 Commands are not automatically replayed after a disconnect, avoiding repeated toggles or volume steps. Relative volume/listening-mode controls verify a subsequent state reply. Navigation and menu keys can only confirm that the command was written to the connection; the protocol does not provide equivalent confirmation of their effect.
@@ -160,6 +170,6 @@ These commands are for the APT wrapper, which passes GitHub package specificatio
 - **Startup readiness:** a receiver can still take a few seconds to become ready after power-on. The plugin now waits for basic zone status within a bounded deadline and reports a timeout if readiness is not confirmed; it cannot eliminate hardware boot time.
 - **Refreshing inputs:** input lists are read during initialization/reconnection and zone power-on. After editing inputs on the receiver, restart the relevant Homebridge instance or child bridge, or power-cycle the zone, to trigger a refresh. Updated lists are reconciled without removing accessories. If the Home app still shows an old list, close and reopen it.
 - **Switch names in Apple Home:** if Input or Audio Listening Mode switches show a generic zone name, open each switch's details and clear the custom name so Home can use the supplied default. The previously reported Home app naming behavior has not been verified as fixed by this PR.
-- **Listening modes:** direct listening-mode switches require a protocol V02 model. Older receivers retain Apple Remote listening-mode cycling.
+- **Listening modes:** direct listening-mode switches, including **None**, require a protocol V02 model. Select None by turning its switch on; turning all mode switches off is not how to select it. Older receivers retain Apple Remote listening-mode cycling.
 - **Standby connectivity:** keep Connected Standby enabled so the receiver can remain reachable when powered off.
 - **Connection preview:** this uses a separate read-only connection. Behavior on models that limit simultaneous control connections needs model-specific testing.
