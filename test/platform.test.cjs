@@ -43,13 +43,14 @@ function apiMock() {
   return api;
 }
 const log = { info() {}, warn() {}, error() {}, debug() {} };
-async function start(t, model = 'MRX 740') {
+async function start(t, model = 'MRX 740', beforeLaunch = () => {}) {
   const receiver = await fakeReceiver({ model });
   const api = apiMock();
   const platform = new AnthemReceiverHomebridgePlatform(log, { platform: 'AnthemReceiver', Host: '127.0.0.1', Port: receiver.port,
-    Zone1: { Active: true, Power: true, Volume: true, Mute: true, MultipleInputs: true }, Zone2: { Active: true, Power: true } }, api);
+    Zone1: { Active: true, Power: true, Volume: true, Mute: true, MultipleInputs: true, ALM: true }, Zone2: { Active: true, Power: true } }, api);
   t.after(async () => { api.emit('shutdown'); await receiver.close(); });
   const ready = once(platform.Controller, 'ControllerReadyForOperation', { signal: AbortSignal.timeout(2500) });
+  beforeLaunch(api, platform);
   api.emit('didFinishLaunching'); await ready;
   return { api, platform, receiver };
 }
@@ -89,4 +90,82 @@ test('offline reads and writes report communication failure', async t => {
   api.emit('shutdown');
   assert.throws(() => value.getter());
   await assert.rejects(value.setter(true));
+});
+
+test('ALM upgrade reuses all eight cached switches and appends a confirmed None selection', async t => {
+  const names = ['ANTHEM LOGIC CINEMA', 'ANTHEM LOGIC MUSIC', 'DOLBY SURROUND', 'DTS NEURAL X',
+    'DTS VIRTUAL X', 'ALL CHANNEL STEREO', 'MONO', 'ALL CHANNEL MONO'];
+  let cached, previous;
+  const { api, platform, receiver } = await start(t, 'MRX 740', (api, platform) => {
+    cached = new api.platformAccessory('Zone1 ALM', 'TEST-RECEIVER1ALM NG');
+    previous = names.map(name => cached.addService(api.hap.Service.Switch, name, name));
+    platform.configureAccessory(cached);
+  });
+  assert.ok(platform.CreatedAccessories.includes(cached));
+  assert.equal(api.registered.some(a => a.UUID === cached.UUID), false);
+  assert.equal(cached.services.filter(s => s.UUID === api.hap.Service.Switch.UUID).length, 9);
+  names.forEach((name, i) => assert.equal(cached.getServiceById(api.hap.Service.Switch, name), previous[i]));
+  const on = name => cached.getServiceById(api.hap.Service.Switch, name).getCharacteristic(api.hap.Characteristic.On);
+  assert.equal(on('None').value, false);
+  await platform.Controller.RunCommand(() => platform.Controller.PowerZone(1, true));
+  // Every pre-existing service still sends its original mode number.
+  for (const [i, name] of names.entries()) {
+    await on(name).setter(true);
+    assert.equal(receiver.states.Z1ALM, i + 1);
+  }
+  await on('None').setter(true);
+  assert.equal(receiver.states.Z1ALM, 0);
+  assert.ok(receiver.commands.includes('Z1ALM0'));
+  assert.ok(receiver.commands.includes('Z1ALM?'));
+  assert.equal(on('None').value, true);
+  names.forEach(name => assert.equal(on(name).value, false));
+  await on('DOLBY SURROUND').setter(true);
+  assert.equal(on('None').value, false);
+  assert.equal(on('DOLBY SURROUND').value, true);
+  // External receiver changes and reconnection restore the zero mode too.
+  receiver.states.Z1ALM = 0;
+  const changed = once(platform.Controller, 'ZoneALMChange');
+  for (const socket of receiver.sockets) socket.write('Z1ALM0;');
+  await changed;
+  assert.equal(on('None').value, true);
+  assert.equal(on('DOLBY SURROUND').value, false);
+  const resumed = once(platform.Controller, 'ControllerReadyForOperation', { signal: AbortSignal.timeout(6000) });
+  for (const socket of receiver.sockets) socket.end();
+  await resumed;
+  assert.equal(on('None').value, true);
+  assert.equal(cached.services.filter(s => s.UUID === api.hap.Service.Switch.UUID).length, 9);
+});
+
+test('ALM switch-off restores actual selection; power-off and failed writes cannot select None', async t => {
+  const { api, platform, receiver } = await start(t);
+  const accessory = api.registered.find(a => a.UUID.endsWith('ALM NG'));
+  const on = name => accessory.getServiceById(api.hap.Service.Switch, name).getCharacteristic(api.hap.Characteristic.On);
+  await assert.rejects(on('None').setter(true));
+  assert.equal(receiver.commands.includes('Z1ALM0'), false);
+  assert.equal(on('None').value, false);
+  await platform.Controller.RunCommand(() => platform.Controller.PowerZone(1, true));
+  await on('None').setter(true);
+  const count = receiver.commands.filter(c => /^Z1ALM\d+$/.test(c)).length;
+  await on('None').setter(false);
+  await on('DOLBY SURROUND').setter(false);
+  await new Promise(resolve => setTimeout(resolve, 150));
+  assert.equal(on('None').value, true);
+  assert.equal(on('DOLBY SURROUND').value, false);
+  assert.equal(receiver.commands.filter(c => /^Z1ALM\d+$/.test(c)).length, count);
+  // A delayed switch-off restoration must not turn None back on after power-off.
+  await on('None').setter(false);
+  await platform.Controller.RunCommand(() => platform.Controller.PowerZone(1, false));
+  platform.Controller.PublishSnapshot();
+  await new Promise(resolve => setTimeout(resolve, 150));
+  for (const service of accessory.services.filter(s => s.UUID === api.hap.Service.Switch.UUID)) {
+    assert.equal(service.getCharacteristic(api.hap.Characteristic.On).value, false);
+  }
+  api.emit('shutdown');
+  await assert.rejects(on('None').setter(true));
+  assert.equal(on('None').value, false);
+});
+
+test('older protocol models do not gain direct ALM switches', async t => {
+  const { platform } = await start(t, 'MRX 710');
+  assert.equal(platform.CreatedAccessories.some(a => a.UUID.endsWith('ALM NG')), false);
 });
