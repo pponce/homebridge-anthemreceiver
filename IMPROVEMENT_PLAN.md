@@ -330,3 +330,31 @@ PR: https://github.com/pponce/homebridge-anthemreceiver/pull/10
 - Added a separate CI job installing the exact PR commit using npm's `pponce/repository#commit` GitHub syntax, into a clean prefix with `--omit=dev` and lifecycle scripts enabled. It verifies generated dist, entry-point loading, custom UI assets, and the UI runtime dependency. Run outcome is recorded by GitHub Actions.
 - Current upstream hb-service parses and validates npm names/versions before invoking npm, and rejects this GitHub shorthand. This does not establish what the owner's installed version accepts. Obtain `sudo hb-service --version`, `node --version`, and `npm --version` before prescribing a branch argument.
 - Keep Homebridge running while collecting versions. Before any candidate install, download a Homebridge backup and establish rollback to the currently installed revision. Do not merge the draft to make installation possible.
+
+### 2026-09-11 — APT wrapper identified; candidate install instructions
+
+- Owner reported Node `v24.21.0`, npm `11.19.0`, and `ignore-scripts=false` from sudo commands. These describe the invoking shell; the APT wrapper loads its Homebridge shell environment and runs npm as the service user.
+- The `hb-service --version` output identifies the Homebridge APT package wrapper. It does not implement that flag. Its `-V` prints Homebridge's version, not a wrapper version.
+- [APT wrapper source](https://github.com/homebridge/homebridge-apt-pkg/blob/latest/deb/opt/homebridge/hb-service-shim) forwards `add` arguments to `npm --prefix /var/lib/homebridge` in the Homebridge environment. The prior concern about the separate UI helper's package-name validation does not apply to this wrapper.
+- [CI run 34560707919](https://github.com/pponce/homebridge-anthemreceiver/actions/runs/34560707919) passed all five jobs at `6fc0012323844d06e8ad7e50b28b032ded2df325`: the four existing matrix jobs and the clean GitHub install job. The clean Git job used Node 22; it is not a claim that the user's exact APT environment was reproduced.
+- Generated dist, custom UI assets, and the UI dependency were verified in the clean Git install. No prebuilt distribution branch is required for the tested lifecycle.
+
+Before the hardware trial, download a Homebridge backup using the existing UI. Leave the PR draft. Install the immutable candidate that passed CI:
+
+```bash
+sudo hb-service stop &&
+sudo hb-service add 'pponce/homebridge-anthemreceiver#6fc0012323844d06e8ad7e50b28b032ded2df325' &&
+sudo hb-service start
+```
+
+If installation fails, capture the output; the `&&` sequence intentionally stops before startup. To return to the repository's default master branch using the owner's existing installation method:
+
+```bash
+sudo hb-service stop &&
+sudo hb-service add 'pponce/homebridge-anthemreceiver#master' &&
+sudo hb-service start
+```
+
+This returns to master; it does not promise to restore an unknown exact previously installed commit or saved configuration. The backup protects the prior Homebridge configuration and pairing state. Keep existing accessories and configuration during initial testing.
+
+After successful installation, inspect `sudo hb-service view`, then open plugin settings. Test normal power, mute, low-level volume adjustment, and input selection before testing standby/reconnect and the read-only connection preview. Record firmware, model reported in logs/preview, actual installation output, and any boot timeout. Hardware validation and final merge remain pending.
