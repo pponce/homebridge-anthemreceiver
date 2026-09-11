@@ -1,0 +1,92 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const { EventEmitter, once } = require('node:events');
+const { AnthemReceiverHomebridgePlatform } = require('../dist/platform.js');
+const { fakeReceiver } = require('./fake-receiver.cjs');
+
+function apiMock() {
+  const kinds = new Map();
+  const characteristic = new Proxy({}, { get(_, name) {
+    if (!kinds.has(name)) kinds.set(name, { UUID: name, ACTIVE: 1, ABSOLUTE: 1, CONFIGURED: 1, HDMI: 3, ALWAYS_DISCOVERABLE: 1 });
+    return kinds.get(name);
+  } });
+  class MockCharacteristic {
+    constructor(type) { this.UUID = type.UUID; this.value = 0; this.props = { perms: ['pr', 'pw'] }; }
+    onSet(fn) { this.setter = fn; return this; }
+    onGet(fn) { this.getter = fn; return this; }
+    updateValue(value) { this.value = value; return this; }
+  }
+  class MockService {
+    constructor(type, name, subtype) { this.UUID = type.UUID; this.displayName = name; this.subtype = subtype; this.characteristics = []; this.links = new Set(); }
+    getCharacteristic(type) { let c = this.characteristics.find(c => c.UUID === type.UUID); if (!c) { c = new MockCharacteristic(type); this.characteristics.push(c); } return c; }
+    setCharacteristic(type, value) { this.getCharacteristic(type).updateValue(value); return this; }
+    updateCharacteristic(type, value) { return this.setCharacteristic(type, value); }
+    addLinkedService(service) { this.links.add(service); }
+    removeLinkedService(service) { this.links.delete(service); }
+  }
+  const service = new Proxy({}, { get(_, name) { return { UUID: name }; } });
+  class Accessory {
+    constructor(name, UUID) { this.UUID = UUID; this.displayName = name; this.services = []; this.addService(service.AccessoryInformation); }
+    getService(type) { return this.services.find(s => s.UUID === type.UUID); }
+    getServiceById(type, subtype) { return this.services.find(s => s.UUID === type.UUID && s.subtype === subtype); }
+    addService(type, name, subtype) { if (this.getServiceById(type, subtype)) throw new Error('Duplicate service'); const s = new MockService(type, name, subtype); this.services.push(s); return s; }
+    removeService(service) { this.services = this.services.filter(s => s !== service); }
+  }
+  const api = new EventEmitter();
+  api.hap = { Service: service, Characteristic: characteristic, Perms: { PAIRED_READ: 'pr' }, HAPStatus: { SERVICE_COMMUNICATION_FAILURE: -70402 }, HapStatusError: Error,
+    uuid: { generate: s => s }, Categories: { TELEVISION: 31 } };
+  api.platformAccessory = Accessory; api.external = []; api.registered = [];
+  api.registerPlatformAccessories = (_plugin, _platform, items) => api.registered.push(...items);
+  api.updatePlatformAccessories = () => {};
+  api.unregisterPlatformAccessories = () => {};
+  api.publishExternalAccessories = (_plugin, items) => api.external.push(...items);
+  return api;
+}
+const log = { info() {}, warn() {}, error() {}, debug() {} };
+async function start(t, model = 'MRX 740') {
+  const receiver = await fakeReceiver({ model });
+  const api = apiMock();
+  const platform = new AnthemReceiverHomebridgePlatform(log, { platform: 'AnthemReceiver', Host: '127.0.0.1', Port: receiver.port,
+    Zone1: { Active: true, Power: true, Volume: true, Mute: true, MultipleInputs: true }, Zone2: { Active: true, Power: true } }, api);
+  t.after(async () => { api.emit('shutdown'); await receiver.close(); });
+  const ready = once(platform.Controller, 'ControllerReadyForOperation', { signal: AbortSignal.timeout(2500) });
+  api.emit('didFinishLaunching'); await ready;
+  return { api, platform, receiver };
+}
+test('unconfigured and malformed setup stays inactive without an exception', () => {
+  for (const config of [{}, { Host: 'receiver', Zone1: [] }]) {
+    const api = apiMock(); const platform = new AnthemReceiverHomebridgePlatform(log, config, api);
+    assert.doesNotThrow(() => api.emit('didFinishLaunching'));
+    assert.equal(platform.Controller.IsReady(), false); api.emit('shutdown');
+  }
+});
+test('two-zone model registers Zone 2; SLM preserves config but publishes only Zone 1', async t => {
+  const two = await start(t);
+  assert.equal(two.platform.Controller.GetConfiguredZoneNumber(), 2);
+  assert.equal(two.api.external.length, 2);
+  const slm = await start(t, 'MRX SLM');
+  assert.equal(slm.platform.Controller.GetConfiguredZoneNumber(), 1);
+  assert.equal(slm.api.external.length, 1);
+  assert.equal(slm.platform.config.Zone2.Active, true);
+});
+test('input renames/repeated refresh preserve service identity and remove obsolete entries', async t => {
+  const { api, platform } = await start(t);
+  const tv = api.external[0]; const type = api.hap.Service.InputSource;
+  const first = tv.getServiceById(type, 'HDMI 1');
+  const listeners = platform.Controller.listenerCount('ZoneInputChange');
+  for (let i = 0; i < 20; i++) platform.Controller.emit('InputChange', ['Renamed', 'Input two']);
+  assert.equal(tv.getServiceById(type, 'HDMI 1'), first);
+  assert.equal(tv.services.filter(s => s.UUID === type.UUID).length, 2);
+  assert.equal(first.getCharacteristic(api.hap.Characteristic.ConfiguredName).value, 'Renamed');
+  assert.equal(platform.Controller.listenerCount('ZoneInputChange'), listeners);
+  const inputs = api.registered.find(accessory => accessory.UUID.endsWith('Input Selector NG'));
+  assert.equal(inputs.services.filter(s => s.UUID === api.hap.Service.Switch.UUID).length, 2);
+});
+test('offline reads and writes report communication failure', async t => {
+  const { api, platform } = await start(t);
+  const power = api.registered.find(accessory => accessory.UUID.endsWith('Power Accessory'));
+  const value = power.getService(api.hap.Service.Switch).getCharacteristic(api.hap.Characteristic.On);
+  api.emit('shutdown');
+  assert.throws(() => value.getter());
+  await assert.rejects(value.setter(true));
+});

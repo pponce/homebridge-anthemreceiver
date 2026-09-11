@@ -1,6 +1,6 @@
-import { Service } from 'homebridge';
-import { AnthemController} from './AnthemController';
-import { AnthemReceiverHomebridgePlatform } from './platform';
+import type { Service } from 'homebridge';
+import type { AnthemController} from './AnthemController';
+import type { AnthemReceiverHomebridgePlatform } from './platform';
 import { HKAccessory } from './HKAccessory';
 
 export class HKBrightnessAccessory extends HKAccessory {
@@ -26,10 +26,10 @@ export class HKBrightnessAccessory extends HKAccessory {
       .setCharacteristic(this.platform.Characteristic.SerialNumber, Controller.SerialNumber + ' Brightness');
 
     this.service.getCharacteristic(this.platform.Characteristic.On)
-      .onSet(this.SetPanelOn.bind(this));
+      .onSet(value => this.platform.HandleSet(() => this.SetPanelOn(value)));
 
     this.service.getCharacteristic(this.platform.Characteristic.Brightness)
-      .onSet(this.SetPanelBrightness.bind(this));
+      .onSet(value => this.platform.HandleSet(() => this.SetPanelBrightness(value)));
 
     this.Controller.on('PanelBrightnessChange', (Brightness:number)=> {
       this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(Brightness > 0);
@@ -41,7 +41,7 @@ export class HKBrightnessAccessory extends HKAccessory {
       if(this.AllZonesOff()){
         this.PanelBrightnessOn = false;
         this.service.getCharacteristic(this.platform.Characteristic.On).updateValue(false);
-        this.service.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(false);
+        this.service.getCharacteristic(this.platform.Characteristic.Brightness).updateValue(0);
       }
     });
   }

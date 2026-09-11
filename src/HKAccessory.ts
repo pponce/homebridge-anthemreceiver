@@ -1,6 +1,6 @@
-import { PlatformAccessory, Service, WithUUID } from 'homebridge';
-import { AnthemController} from './AnthemController';
-import { AnthemReceiverHomebridgePlatform } from './platform';
+import type { PlatformAccessory, Service, WithUUID } from 'homebridge';
+import type { AnthemController} from './AnthemController';
+import type { AnthemReceiverHomebridgePlatform } from './platform';
 import { PLATFORM_NAME, PLUGIN_NAME } from './settings';
 
 export abstract class HKAccessory {

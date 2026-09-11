@@ -1,31 +1,58 @@
-name: Build and Lint
-
-on: [push, pull_request]
-
+name: Build, Test and Package
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
-
     strategy:
+      fail-fast: false
       matrix:
-        # the Node.js versions to build on
-        node-version: [10.x, 12.x, 13.x, 14.x, 15.x]
-
+        node: [22, 24]
+        homebridge: ['^1.8.0', '^2.0.0']
     steps:
-      - uses: actions/checkout@v2
-
-      - name: Use Node.js ${{ matrix.node-version }} 
-        uses: actions/setup-node@v1
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
-          node-version: ${{ matrix.node-version }}
-
-      - name: Install dependencies
-        run: npm install
-
-      - name: Lint the project
-        run: npm run lint
-
-      - name: Build the project
-        run: npm run build
+          node-version: ${{ matrix.node }}
+      # Switch to npm ci once the first dependency lockfile is generated and reviewed.
+      - run: npm install --ignore-scripts
+      - run: npm install --no-save --ignore-scripts 'homebridge@${{ matrix.homebridge }}'
+      - run: npm run lint
+      - run: npm test
+      - run: npm run check:package
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:ui
+      - name: Verify installed archive with production dependencies
+        run: |
+          archive=$(npm pack --ignore-scripts --silent)
+          destination=$(mktemp -d)
+          npm install --prefix "$destination" --omit=dev --ignore-scripts "$PWD/$archive" 'homebridge@${{ matrix.homebridge }}'
+          node -e 'require(process.argv[1])' "$destination/node_modules/homebridge-anthemreceiver"
+  git-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install this commit directly from GitHub with lifecycle scripts enabled
         env:
-          CI: true
+          SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          destination=$(mktemp -d)
+          npm install --prefix "$destination" --omit=dev "pponce/homebridge-anthemreceiver#$SOURCE_SHA" 'homebridge@^1.8.0'
+          node - "$destination/node_modules/homebridge-anthemreceiver" <<'NODE'
+          const assert = require('node:assert/strict');
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const { createRequire } = require('node:module');
+          const root = process.argv[2];
+          assert.equal(typeof require(root), 'function');
+          for (const file of ['dist/AnthemController.js', 'dist/ui-test.js', 'dist/config.js', 'homebridge-ui/server.js', 'homebridge-ui/public/index.html', 'homebridge-ui/public/app.js', 'homebridge-ui/public/model.js', 'homebridge-ui/public/style.css']) {
+            assert.ok(fs.existsSync(path.join(root, file)), `Missing installed file: ${file}`);
+          }
+          const fromPlugin = createRequire(path.join(root, 'package.json'));
+          fromPlugin.resolve('@homebridge/plugin-ui-utils');
+          require(path.join(root, 'dist/ui-test.js'));
+          console.log('Clean GitHub install generated dist and included the UI and its runtime dependency.');
+          NODE

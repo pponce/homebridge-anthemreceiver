@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><link rel="stylesheet" href="style.css"></head>
+<body>
+<main class="anthem-settings">
+  <header class="anthem-intro"><span class="anthem-eyebrow">ANTHEM RECEIVER</span><h2>Your cinema, connected to Home.</h2><p>Connect your receiver, choose your zone controls, and bring Apple Remote to your home theater.</p></header>
+  <div id="message" class="alert alert-info" role="status" aria-live="polite">Loading your settings…</div>
+  <form id="settings" novalidate hidden>
+    <section class="anthem-card" aria-labelledby="connection-title"><div class="anthem-heading"><h3 id="connection-title">Receiver connection</h3><span class="anthem-badge">1 receiver</span></div><div id="connection" class="anthem-grid"></div><p class="anthem-help">Enable Connected Standby in your receiver’s settings so Homebridge can reach it while it is off.</p><div class="anthem-actions"><button id="test" type="button" class="btn btn-outline-primary">Test connection</button><button id="cancel" type="button" class="btn btn-outline-secondary" hidden>Cancel test</button></div><p class="anthem-help">The test reads receiver information using these settings. It does not turn the receiver on or change its controls.</p><div id="preview" aria-live="polite"></div></section>
+    <div id="zones"></div>
+    <section class="anthem-card" aria-labelledby="display-title"><h3 id="display-title">Display and volume</h3><div id="display" class="anthem-grid"></div></section>
+    <details class="anthem-card"><summary>Adding Apple Remote to Home</summary><p>Enable “TV accessory and Apple Remote” for a zone, save, then restart its Homebridge instance or child bridge.</p><p>In Apple Home, select <strong>Add Accessory → More options</strong> and pair the zone’s TV accessory. The separate Power, Volume, and Mute switches appear automatically when enabled.</p></details>
+  </form>
+  <p class="anthem-footer">Use Homebridge’s Save button to keep your changes, then restart the Homebridge instance or child bridge running this plugin.</p>
+</main><script src="model.js"></script><script src="app.js"></script>
+</body></html>

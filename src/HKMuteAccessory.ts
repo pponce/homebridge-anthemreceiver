@@ -1,6 +1,6 @@
-import { Service } from 'homebridge';
-import { AnthemController} from './AnthemController';
-import { AnthemReceiverHomebridgePlatform } from './platform';
+import type { Service } from 'homebridge';
+import type { AnthemController} from './AnthemController';
+import type { AnthemReceiverHomebridgePlatform } from './platform';
 import { HKAccessory } from './HKAccessory';
 
 export class HKMuteAccessory extends HKAccessory {
@@ -25,7 +25,7 @@ export class HKMuteAccessory extends HKAccessory {
       .setCharacteristic(this.platform.Characteristic.SerialNumber, Controller.SerialNumber + ' Mute');
 
     this.service.getCharacteristic(this.platform.Characteristic.On)
-      .onSet(this.SetMute.bind(this));
+      .onSet(value => this.platform.HandleSet(() => this.SetMute(value)));
 
     // Handle ZoneMutedChange event from controller
     this.Controller.on('ZoneMutedChange', (Zone: number, Muted:boolean) => {

@@ -1,6 +1,6 @@
-import { Service } from 'homebridge';
-import { AnthemController} from './AnthemController';
-import { AnthemReceiverHomebridgePlatform } from './platform';
+import type { Service } from 'homebridge';
+import type { AnthemController} from './AnthemController';
+import type { AnthemReceiverHomebridgePlatform } from './platform';
 import { HKAccessory } from './HKAccessory';
 
 
@@ -27,7 +27,7 @@ export class HKARCAccessory extends HKAccessory{
       .setCharacteristic(this.platform.Characteristic.SerialNumber, Controller.SerialNumber + ' ARC');
 
     this.service.getCharacteristic(this.platform.Characteristic.On)
-      .onSet(this.SwitchARC.bind(this));
+      .onSet(value => this.platform.HandleSet(() => this.SwitchARC(value)));
 
     this.Controller.on('ZoneARCEnabledChange', (Zone: number, ARCEnabled:boolean)=>{
       if(this.ZoneNumber === Zone){
